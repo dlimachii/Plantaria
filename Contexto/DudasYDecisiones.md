@@ -288,14 +288,15 @@ Evita confundir notas históricas con estado vigente y facilita saber qué docum
 
 Estado: resuelta
 
-Fecha: 2026-04-22 17:12 CEST; actualizado 2026-04-22 17:16 CEST
+Fecha: 2026-04-22 17:12 CEST; actualizado 2026-04-22 17:18 CEST
 
 Decisión:
 
 - inicializar Git en `/home/aviddrianimachie/CEAC/Proyecto`;
 - usar rama principal `main`;
 - añadir `.gitignore` raíz para excluir dependencias, builds, caches, entornos locales y secretos;
-- configurar identidad Git local del proyecto como `dlimachii <dlimachi@icloud.com>`.
+- configurar identidad Git local del proyecto como `dlimachii <dlimachi@icloud.com>`;
+- crear commit inicial `6b07fce` con mensaje `Initial Plantaria baseline`.
 
 Motivo:
 

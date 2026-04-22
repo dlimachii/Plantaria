@@ -32,6 +32,7 @@
 - Se verificó `git branch --show-current`: `main`.
 - A las 2026-04-22 17:16 CEST se configuró la identidad Git local como `dlimachii <dlimachi@icloud.com>`.
 - Antes de preparar el commit inicial se revisaron candidatos: 142 archivos versionables, sin `.env`, `vendor/`, APK, sqlite local ni caches según `git check-ignore`.
+- A las 2026-04-22 17:18 CEST se creó el commit inicial `6b07fce` con mensaje `Initial Plantaria baseline`.
 
 ## 2026-04-21
 

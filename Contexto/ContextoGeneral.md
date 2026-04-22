@@ -127,4 +127,5 @@ Abrir además:
 - El cliente Android compila, consume la API para auth/registros, captura o selecciona fotos reales, permite crear observaciones, rellena coordenadas desde ubicación del dispositivo y muestra registros en mapa real MapLibre.
 - El mapa usa por ahora el estilo público demo de MapLibre, útil para desarrollo; para producción habría que cerrar proveedor/tiles con límites claros.
 - Git ya está inicializado en la raíz del workspace; identidad local configurada el 2026-04-22 17:16 CEST como `dlimachii <dlimachi@icloud.com>`.
+- Commit inicial creado el 2026-04-22 17:18 CEST: `6b07fce` (`Initial Plantaria baseline`).
 - El alcance funcional es amplio; si no se protege el MVP, el TFC se puede ir de tamaño.
