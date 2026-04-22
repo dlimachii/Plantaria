@@ -354,6 +354,24 @@ Motivo:
 
 Evita que el usuario tenga que copiar IDs manualmente desde la ficha, reduce errores y conecta mejor el flujo principal de mapa con el seguimiento temporal.
 
+### Panel web mínimo de moderación
+
+Estado: resuelta
+
+Fecha: 2026-04-22 18:45 CEST
+
+Decisión:
+
+- implementar un panel web Laravel bajo `/admin`;
+- usar login de sesión web con handle o email;
+- restringir acceso a roles `MOD` y `ADMIN`;
+- priorizar dashboard, cola de registros pendientes, detalle de registro y verificación/rechazo;
+- dejar flags, usuarios y analítica visual como ampliaciones posteriores.
+
+Motivo:
+
+El sistema necesita una forma defendible de validar reportes sin depender solo de endpoints API. Un panel mínimo cubre el flujo central de moderación del MVP y encaja con el alcance del TFC.
+
 ## Dudas abiertas
 
 ### Cliente web público en el TFC

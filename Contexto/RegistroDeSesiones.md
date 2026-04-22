@@ -75,6 +75,17 @@
 - El formulario mantiene el ID editable y muestra estado local indicando el registro seleccionado.
 - Validaciones ejecutadas: `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`; `php artisan test` pasa con 6 tests y 32 assertions.
 
+### Panel web mínimo de moderación/admin
+
+- Fecha: 2026-04-22 18:45 CEST.
+- Se añadieron rutas web `/admin`, `/admin/login`, `/admin/moderation/pending` y `/admin/moderation/records/{publicId}`.
+- Se implementó login web con handle o email, restringido a roles `MOD` y `ADMIN`.
+- Se creó dashboard con métricas básicas de registros, usuarios, flags y eventos recientes.
+- Se creó cola de registros pendientes con foto, autor, ubicación y acceso a revisión.
+- Se creó detalle de registro con foto, datos, observaciones y formularios de verificar o rechazar.
+- Se añadieron tests de panel admin: login, bloqueo de usuario normal y verificación web de registro.
+- Validaciones ejecutadas: `php artisan test` pasa con 9 tests y 45 assertions; `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`.
+
 ## 2026-04-21
 
 ### Recuperación de instalación Android

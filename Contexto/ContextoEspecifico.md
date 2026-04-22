@@ -31,6 +31,7 @@ Capacidades ya implementadas:
 - verificación de registros por moderación;
 - panel API de analítica;
 - gestión administrativa básica de usuarios.
+- panel web mínimo de moderación/admin con login de `MOD`/`ADMIN`, dashboard, cola de pendientes, detalle de registro y acciones de verificar/rechazar.
 
 ### Dominio implementado
 
@@ -74,7 +75,7 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
-Actualización: 2026-04-22 18:35 CEST.
+Actualización: 2026-04-22 18:45 CEST.
 
 Estado actual:
 
@@ -111,6 +112,7 @@ Estado actual:
 Validación realizada:
 
 - `./gradlew :app:assembleDebug` ejecutado correctamente;
+- `php artisan test` ejecutado correctamente con 9 tests y 45 assertions;
 - APK debug generado en `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 Pendiente:

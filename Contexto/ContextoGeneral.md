@@ -55,13 +55,14 @@ Completar la integración funcional Android:
 - validar en móvil físico el flujo completo de mapa, ficha, fotos, cámara, GPS y API local;
 - pulir estados visuales y rendimiento real del mapa en hardware físico;
 - mejorar buscador de mapa con geocodificación/lugares;
+- ampliar panel web con flags, usuarios y analítica visual;
 - decidir proveedor/estrategia de tiles para no depender del estilo demo de MapLibre en producción.
 
 ## Estado para próxima sesión
 
-Fecha de corte: 2026-04-22 18:35 CEST.
+Fecha de corte: 2026-04-22 18:45 CEST.
 
-Estado aproximado del MVP Android + backend: 73%.
+Estado aproximado del MVP Android + backend + panel: 78%.
 
 Ya está hecho y validado:
 
@@ -82,12 +83,14 @@ Ya está hecho y validado:
 - desde la ficha se puede saltar a `Acciones` con el ID del registro prellenado para añadir observación;
 - fotos reales visibles en preview, ficha y observaciones mediante URLs públicas del backend;
 - validaciones por campo en autenticación, creación de reporte y creación de observación;
+- panel web mínimo de administración/moderación en Laravel;
+- login web para `MOD`/`ADMIN`, dashboard, cola de pendientes, detalle y verificación/rechazo de registros;
 - datos demo seedables y cargados en PostgreSQL local alrededor de Barcelona;
 - APK debug generado en `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-Revalidación del 2026-04-22 18:35 CEST:
+Revalidación del 2026-04-22 18:45 CEST:
 
-- `php artisan test` en `backend/`: 6 tests, 32 assertions, todo pasando;
+- `php artisan test` en `backend/`: 9 tests, 45 assertions, todo pasando;
 - `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
 
 No se ha podido validar todavía porque falta el móvil físico:
@@ -101,7 +104,7 @@ No se ha podido validar todavía porque falta el móvil físico:
 Siguiente paso recomendado si no está el móvil:
 
 - mejorar buscador de mapa con geocodificación/lugares;
-- empezar panel web mínimo de moderación/admin;
+- ampliar panel web con flags, usuarios y analítica visual;
 - preparar estados vacíos/carga/error más pulidos para demo.
 
 Siguiente paso recomendado cuando esté el móvil:

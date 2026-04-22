@@ -76,6 +76,17 @@ Estado actualizado: 2026-04-22 17:30 CEST.
 - Remoto `origin`: `git@github.com:dlimachii/Plantaria.git`.
 - La rama `main` local sigue a `origin/main`.
 
+## Panel web Laravel
+
+Estado actualizado: 2026-04-22 18:45 CEST.
+
+- Rutas web bajo `/admin`.
+- Login web en `/admin/login` usando handle o email.
+- Acceso restringido a usuarios con rol `mod` o `admin`.
+- Dashboard básico en `/admin`.
+- Cola de moderación en `/admin/moderation/pending`.
+- Detalle y acciones de verificar/rechazar en `/admin/moderation/records/{publicId}`.
+
 ## Estado observado del entorno local en esta sesión
 
 - `python3` disponible: 3.12.3
