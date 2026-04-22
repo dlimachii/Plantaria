@@ -74,6 +74,8 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
+Actualización: 2026-04-22 18:16 CEST.
+
 Estado actual:
 
 - módulo `app` con Kotlin y Jetpack Compose;
@@ -98,6 +100,10 @@ Estado actual:
 - creación de observaciones contra `/api/records/{publicId}/observations`.
 - solicitud de permisos de ubicación y botón para rellenar coordenadas con ubicación actual o última conocida;
 - registros demo seedables alrededor de Barcelona para validar el mapa sin depender del móvil físico.
+- ficha completa de registro desde la preview del mapa, consultando `/api/records/{publicId}`;
+- carga visual de fotos reales en preview, ficha y observaciones;
+- normalización Android de URLs de fotos para sustituir `localhost` por la raíz de la API configurada cuando haga falta;
+- validaciones por campo en login/registro, nuevo reporte y nueva observación.
 
 Validación realizada:
 
@@ -107,7 +113,7 @@ Validación realizada:
 Pendiente:
 
 - centrar el mapa en la ubicación del usuario cuando haya permiso;
-- mejorar validaciones y estados de error por campo.
+- validar el flujo completo en móvil físico.
 
 ## Visión funcional
 

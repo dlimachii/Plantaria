@@ -304,6 +304,22 @@ Motivo:
 
 El proyecto ya tiene código real y necesita control de cambios. Inicializar Git permite usar `git status` y preparar una línea base sin arriesgarse a versionar `vendor/`, builds Android, `.env`, caches o ficheros generados.
 
+### Exposición de fotos a cliente Android
+
+Estado: resuelta
+
+Fecha: 2026-04-22 18:16 CEST
+
+Decisión:
+
+- el backend incluye URLs públicas de fotos en los payloads de registros y observaciones;
+- el cliente Android consume esas URLs para preview, ficha y timeline de observaciones;
+- el cliente normaliza URLs con host `localhost`, `127.0.0.1` o `0.0.0.0` sustituyéndolas por la raíz de la API configurada.
+
+Motivo:
+
+En emulador y móvil físico, una URL generada como `localhost` apuntaría al propio dispositivo, no al backend Laravel. Normalizar desde la URL de API evita romper la demo local sin acoplar la UI a un host fijo.
+
 ## Dudas abiertas
 
 ### Cliente web público en el TFC

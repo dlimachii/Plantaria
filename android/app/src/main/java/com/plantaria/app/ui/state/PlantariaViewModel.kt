@@ -149,6 +149,32 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun openRecordDetail(publicId: String) {
+        viewModelScope.launch {
+            uiState = uiState.copy(
+                isRecordDetailLoading = true,
+                selectedRecordDetail = uiState.records.firstOrNull { it.publicId == publicId },
+                recordDetailError = null,
+            )
+            runCatching {
+                apiClient().record(publicId)
+            }.onSuccess { record ->
+                uiState = uiState.copy(selectedRecordDetail = record)
+            }.onFailure { throwable ->
+                uiState = uiState.copy(recordDetailError = throwable.readableMessage())
+            }
+            uiState = uiState.copy(isRecordDetailLoading = false)
+        }
+    }
+
+    fun closeRecordDetail() {
+        uiState = uiState.copy(
+            selectedRecordDetail = null,
+            isRecordDetailLoading = false,
+            recordDetailError = null,
+        )
+    }
+
     fun createRecord(
         provisionalCommonName: String,
         description: String,
@@ -321,10 +347,13 @@ data class PlantariaUiState(
     val session: AppSession = AppSession(),
     val records: List<PlantRecord> = emptyList(),
     val searchQuery: String = "",
+    val selectedRecordDetail: PlantRecord? = null,
     val isAuthLoading: Boolean = false,
     val isRecordsLoading: Boolean = false,
+    val isRecordDetailLoading: Boolean = false,
     val isCreateRecordLoading: Boolean = false,
     val isCreateObservationLoading: Boolean = false,
     val message: String? = null,
     val error: String? = null,
+    val recordDetailError: String? = null,
 )

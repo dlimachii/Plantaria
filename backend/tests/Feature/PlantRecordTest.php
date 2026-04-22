@@ -28,7 +28,9 @@ class PlantRecordTest extends TestCase
 
         $recordResponse
             ->assertCreated()
-            ->assertJsonPath('data.provisional_common_name', 'Morera');
+            ->assertJsonPath('data.provisional_common_name', 'Morera')
+            ->assertJsonPath('data.primary_photo_path', 'uploads/morera-1.jpg')
+            ->assertJsonPath('data.primary_photo_url', asset('storage/uploads/morera-1.jpg'));
 
         $publicId = $recordResponse->json('data.public_id');
 
@@ -42,6 +44,15 @@ class PlantRecordTest extends TestCase
 
         $observationResponse
             ->assertCreated()
-            ->assertJsonPath('data.record_public_id', $publicId);
+            ->assertJsonPath('data.record_public_id', $publicId)
+            ->assertJsonPath('data.photo_url', asset('storage/uploads/morera-2.jpg'));
+
+        $detailResponse = $this->getJson("/api/records/{$publicId}");
+
+        $detailResponse
+            ->assertOk()
+            ->assertJsonPath('data.primary_photo_url', asset('storage/uploads/morera-1.jpg'))
+            ->assertJsonFragment(['photo_url' => asset('storage/uploads/morera-1.jpg')])
+            ->assertJsonFragment(['photo_url' => asset('storage/uploads/morera-2.jpg')]);
     }
 }

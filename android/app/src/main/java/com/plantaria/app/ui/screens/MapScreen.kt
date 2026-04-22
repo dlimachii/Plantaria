@@ -1,6 +1,7 @@
 package com.plantaria.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +11,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Refresh
@@ -30,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -50,7 +54,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.plantaria.app.data.model.PlantObservation
 import com.plantaria.app.data.model.PlantRecord
+import com.plantaria.app.ui.components.RemotePlantariaImage
 import com.plantaria.app.ui.theme.PlantariaColors
 import java.util.Locale
 import org.maplibre.android.MapLibre
@@ -70,10 +76,10 @@ private data class MapRecordPreview(
     val scientificName: String?,
     val status: String?,
     val authorHandle: String?,
+    val photoUrl: String?,
     val latitude: Double,
     val longitude: Double,
 ) {
-    val isVerified: Boolean = status == "verified"
     val coordinatesText: String = String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
 }
 
@@ -81,11 +87,16 @@ private data class MapRecordPreview(
 fun MapScreen(
     contentPadding: PaddingValues,
     records: List<PlantRecord>,
+    selectedRecordDetail: PlantRecord?,
     searchQuery: String,
     isLoading: Boolean,
+    isRecordDetailLoading: Boolean,
     error: String?,
+    recordDetailError: String?,
     onSearchQueryChange: (String) -> Unit,
     onSearchSubmit: () -> Unit,
+    onRecordPreviewClick: (String) -> Unit,
+    onCloseRecordDetail: () -> Unit,
 ) {
     val previews = records.map { record -> record.toMapPreview() }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -123,8 +134,17 @@ fun MapScreen(
             StatusText(message = null, error = error)
             Spacer(modifier = Modifier.weight(1f))
             when {
-                isLoading -> LoadingCard()
-                selectedRecord != null -> RecordPreviewCard(selectedRecord)
+                selectedRecordDetail != null || isRecordDetailLoading || recordDetailError != null -> RecordDetailCard(
+                    record = selectedRecordDetail,
+                    isLoading = isRecordDetailLoading,
+                    error = recordDetailError,
+                    onClose = onCloseRecordDetail,
+                )
+                isLoading -> LoadingCard("Cargando registros")
+                selectedRecord != null -> RecordPreviewCard(
+                    record = selectedRecord,
+                    onClick = { onRecordPreviewClick(selectedRecord.id) },
+                )
                 else -> EmptyMapCard()
             }
         }
@@ -302,9 +322,14 @@ private fun MapSearchBar(
 }
 
 @Composable
-private fun RecordPreviewCard(record: MapRecordPreview) {
+private fun RecordPreviewCard(
+    record: MapRecordPreview,
+    onClick: () -> Unit,
+) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -314,19 +339,14 @@ private fun RecordPreviewCard(record: MapRecordPreview) {
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier.size(72.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = PlantariaColors.Leaf.copy(alpha = 0.14f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = PlantariaColors.Leaf,
-                    )
-                }
-            }
+            RemotePlantariaImage(
+                imageUrl = record.photoUrl,
+                contentDescription = "Foto de ${record.name}",
+                fallbackIcon = Icons.Outlined.LocationOn,
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -357,6 +377,11 @@ private fun RecordPreviewCard(record: MapRecordPreview) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    text = "Toca la tarjeta para abrir la ficha",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = PlantariaColors.Leaf,
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatusChip(record.status)
@@ -379,7 +404,177 @@ private fun RecordPreviewCard(record: MapRecordPreview) {
 }
 
 @Composable
-private fun LoadingCard() {
+private fun RecordDetailCard(
+    record: PlantRecord?,
+    isLoading: Boolean,
+    error: String?,
+    onClose: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 560.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = record?.displayName ?: "Ficha de registro",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Cerrar ficha",
+                    )
+                }
+            }
+
+            when {
+                isLoading && record == null -> LoadingCard("Cargando ficha")
+                error != null -> Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                record != null -> RecordDetailContent(record)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordDetailContent(record: PlantRecord) {
+    RemotePlantariaImage(
+        imageUrl = record.primaryPhotoUrl,
+        contentDescription = "Foto principal de ${record.displayName}",
+        fallbackIcon = Icons.Outlined.LocationOn,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(190.dp)
+            .clip(RoundedCornerShape(8.dp)),
+    )
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatusChip(record.verificationStatus)
+        record.plantCondition?.let { TextChip("Estado: $it") }
+    }
+
+    DetailLine(label = "ID", value = record.publicId)
+    record.verifiedScientificName?.let { DetailLine(label = "Nombre cientifico", value = it) }
+    record.verifiedCommonName?.let { DetailLine(label = "Nombre comun verificado", value = it) }
+    DetailLine(label = "Nombre provisional", value = record.provisionalCommonName)
+    record.description?.let { DetailLine(label = "Descripcion", value = it) }
+    record.author?.handle?.let { DetailLine(label = "Autor", value = "@$it") }
+    DetailLine(
+        label = "Coordenadas",
+        value = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude),
+    )
+    record.createdAt?.let { DetailLine(label = "Creado", value = it.toReadableDateTime()) }
+    record.latestObservationAt?.let { DetailLine(label = "Ultima observacion", value = it.toReadableDateTime()) }
+
+    Text(
+        text = "Observaciones (${record.observations.size})",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    if (record.observations.isEmpty()) {
+        Text(
+            text = "Todavia no hay observaciones cargadas en esta ficha.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        record.observations.forEach { observation ->
+            ObservationRow(observation)
+        }
+    }
+}
+
+@Composable
+private fun ObservationRow(observation: PlantObservation) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        RemotePlantariaImage(
+            imageUrl = observation.photoUrl,
+            contentDescription = "Foto de observacion",
+            fallbackIcon = Icons.Outlined.LocationOn,
+            modifier = Modifier
+                .size(70.dp)
+                .clip(RoundedCornerShape(8.dp)),
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = observation.observedAt?.toReadableDateTime() ?: observation.publicId,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            observation.note?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            observation.author?.handle?.let {
+                Text(
+                    text = "@$it",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = String.format(Locale.US, "%.5f, %.5f", observation.latitude, observation.longitude),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun TextChip(text: String) {
+    AssistChip(
+        onClick = {},
+        label = { Text(text) },
+    )
+}
+
+@Composable
+private fun LoadingCard(message: String) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -390,7 +585,7 @@ private fun LoadingCard() {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            Text("Cargando registros")
+            Text(message)
         }
     }
 }
@@ -408,7 +603,7 @@ private fun EmptyMapCard() {
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Cuando el backend tenga reportes, aparecerán como chinchetas en este mapa.",
+                text = "Cuando el backend tenga reportes, apareceran como chinchetas en este mapa.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -438,6 +633,7 @@ private fun PlantRecord.toMapPreview(): MapRecordPreview {
         scientificName = verifiedScientificName,
         status = verificationStatus,
         authorHandle = author?.handle,
+        photoUrl = primaryPhotoUrl,
         latitude = latitude,
         longitude = longitude,
     )
@@ -445,4 +641,8 @@ private fun PlantRecord.toMapPreview(): MapRecordPreview {
 
 private fun MapRecordPreview.toLatLng(): LatLng {
     return LatLng(latitude, longitude)
+}
+
+private fun String.toReadableDateTime(): String {
+    return take(16).replace('T', ' ')
 }

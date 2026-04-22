@@ -105,11 +105,16 @@ fun PlantariaApp(
                 MapScreen(
                     contentPadding = innerPadding,
                     records = uiState.records,
+                    selectedRecordDetail = uiState.selectedRecordDetail,
                     searchQuery = uiState.searchQuery,
                     isLoading = uiState.isRecordsLoading,
+                    isRecordDetailLoading = uiState.isRecordDetailLoading,
                     error = uiState.error,
+                    recordDetailError = uiState.recordDetailError,
                     onSearchQueryChange = viewModel::updateSearchQuery,
                     onSearchSubmit = viewModel::refreshRecords,
+                    onRecordPreviewClick = viewModel::openRecordDetail,
+                    onCloseRecordDetail = viewModel::closeRecordDetail,
                 )
             }
             composable(PlantariaDestination.Actions.route) {

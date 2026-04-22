@@ -44,6 +44,19 @@
 - Se configuró `origin` como `git@github.com:dlimachii/Plantaria.git`.
 - Se ejecutó `git push -u origin main`; la rama local `main` queda siguiendo a `origin/main`.
 
+### Ficha de registro, fotos y validaciones Android
+
+- Fecha: 2026-04-22 17:43 CEST; validado 2026-04-22 18:16 CEST.
+- Se amplió el backend para incluir `primary_photo_url` y `photo_url` en registros y observaciones.
+- Se añadió test backend para verificar URLs públicas de fotos en detalle de registro.
+- Android añade modelo de observaciones en detalle y endpoint cliente `GET /api/records/{publicId}`.
+- La preview del mapa abre una ficha completa con foto principal, nombres, estado, autor, coordenadas, fechas y observaciones.
+- Se añadió componente `RemotePlantariaImage` para cargar imágenes remotas sin introducir dependencias externas.
+- Se muestran fotos reales en preview, ficha y observaciones.
+- Se añadieron validaciones por campo en login/registro, creación de reporte y creación de observación.
+- Los formularios de reporte/observación limpian campos principales tras éxito.
+- Validaciones ejecutadas: `php artisan test` pasa con 6 tests y 32 assertions; `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`.
+
 ## 2026-04-21
 
 ### Recuperación de instalación Android

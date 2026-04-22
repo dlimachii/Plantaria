@@ -30,6 +30,7 @@ class SessionStore(
                     displayName = preferences[DISPLAY_NAME],
                     email = preferences[EMAIL],
                     photoPath = preferences[PHOTO_PATH],
+                    photoUrl = preferences[PHOTO_URL],
                     country = preferences[COUNTRY],
                     province = preferences[PROVINCE],
                     city = preferences[CITY],
@@ -54,6 +55,7 @@ class SessionStore(
             writeNullable(preferences, DISPLAY_NAME, user.displayName)
             writeNullable(preferences, EMAIL, user.email)
             writeNullable(preferences, PHOTO_PATH, user.photoPath)
+            writeNullable(preferences, PHOTO_URL, user.photoUrl)
             writeNullable(preferences, COUNTRY, user.country)
             writeNullable(preferences, PROVINCE, user.province)
             writeNullable(preferences, CITY, user.city)
@@ -70,6 +72,7 @@ class SessionStore(
             preferences.remove(DISPLAY_NAME)
             preferences.remove(EMAIL)
             preferences.remove(PHOTO_PATH)
+            preferences.remove(PHOTO_URL)
             preferences.remove(COUNTRY)
             preferences.remove(PROVINCE)
             preferences.remove(CITY)
@@ -98,6 +101,7 @@ class SessionStore(
         val DISPLAY_NAME = stringPreferencesKey("display_name")
         val EMAIL = stringPreferencesKey("email")
         val PHOTO_PATH = stringPreferencesKey("photo_path")
+        val PHOTO_URL = stringPreferencesKey("photo_url")
         val COUNTRY = stringPreferencesKey("country")
         val PROVINCE = stringPreferencesKey("province")
         val CITY = stringPreferencesKey("city")

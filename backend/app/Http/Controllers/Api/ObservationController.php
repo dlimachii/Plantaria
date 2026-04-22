@@ -42,6 +42,7 @@ class ObservationController extends Controller
                 'public_id' => $observation->public_id,
                 'record_public_id' => $record->public_id,
                 'photo_path' => $observation->photo_path,
+                'photo_url' => asset("storage/{$observation->photo_path}"),
                 'note' => $observation->note,
                 'plant_condition' => $observation->plant_condition?->value,
                 'latitude' => (float) $observation->latitude,

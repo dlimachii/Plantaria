@@ -122,6 +122,7 @@ class PlantRecordController extends Controller
             'display_name' => $record->verified_common_name ?? $record->provisional_common_name,
             'description' => $record->description,
             'primary_photo_path' => $record->primary_photo_path,
+            'primary_photo_url' => $this->publicStorageUrl($record->primary_photo_path),
             'plant_condition' => $record->plant_condition?->value,
             'verification_status' => $record->verification_status?->value,
             'latitude' => (float) $record->latitude,
@@ -132,6 +133,7 @@ class PlantRecordController extends Controller
                 'handle' => $record->author?->handle,
                 'display_name' => $record->author?->display_name,
                 'photo_path' => $record->author?->photo_path,
+                'photo_url' => $this->publicStorageUrl($record->author?->photo_path),
             ],
         ];
 
@@ -139,6 +141,7 @@ class PlantRecordController extends Controller
             $payload['observations'] = $record->observations->map(fn (Observation $observation) => [
                 'public_id' => $observation->public_id,
                 'photo_path' => $observation->photo_path,
+                'photo_url' => $this->publicStorageUrl($observation->photo_path),
                 'note' => $observation->note,
                 'plant_condition' => $observation->plant_condition?->value,
                 'latitude' => (float) $observation->latitude,
@@ -148,10 +151,20 @@ class PlantRecordController extends Controller
                 'author' => [
                     'handle' => $observation->author?->handle,
                     'display_name' => $observation->author?->display_name,
+                    'photo_url' => $this->publicStorageUrl($observation->author?->photo_path),
                 ],
             ])->values();
         }
 
         return $payload;
+    }
+
+    private function publicStorageUrl(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        return asset("storage/{$path}");
     }
 }

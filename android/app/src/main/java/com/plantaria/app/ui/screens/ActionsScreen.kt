@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -93,6 +94,48 @@ fun ActionsScreen(
     var pendingLocationTarget by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingCameraTarget by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var reportSubmitted by rememberSaveable { mutableStateOf(false) }
+    var observationSubmitted by rememberSaveable { mutableStateOf(false) }
+
+    val reportNameError = if (reportSubmitted) requiredError(provisionalName, "El nombre provisional") else null
+    val reportDescriptionError = maxLengthError(description, 2000, "La descripcion")
+    val reportPhotoError = if (reportSubmitted && selectedPhotoUri == null) "Selecciona o captura una foto." else null
+    val reportLatitudeError = if (reportSubmitted) coordinateError(latitude, "Latitud", -90.0, 90.0) else null
+    val reportLongitudeError = if (reportSubmitted) coordinateError(longitude, "Longitud", -180.0, 180.0) else null
+    val observationIdError = if (observationSubmitted) requiredError(recordId, "El ID del registro") else null
+    val observationNoteError = maxLengthError(observationNote, 2000, "La nota")
+    val observationPhotoError = if (observationSubmitted && selectedObservationPhotoUri == null) {
+        "Selecciona o captura una foto."
+    } else {
+        null
+    }
+    val observationLatitudeError = if (observationSubmitted) {
+        coordinateError(observationLatitude, "Latitud", -90.0, 90.0)
+    } else {
+        null
+    }
+    val observationLongitudeError = if (observationSubmitted) {
+        coordinateError(observationLongitude, "Longitud", -180.0, 180.0)
+    } else {
+        null
+    }
+
+    LaunchedEffect(message) {
+        when {
+            message?.startsWith("Reporte creado") == true -> {
+                provisionalName = ""
+                description = ""
+                selectedPhotoUri = null
+                reportSubmitted = false
+            }
+            message?.startsWith("Observación añadida") == true -> {
+                recordId = ""
+                observationNote = ""
+                selectedObservationPhotoUri = null
+                observationSubmitted = false
+            }
+        }
+    }
 
     fun applyLocation(location: Location, target: LocationTarget) {
         val latitudeText = location.latitude.toCoordinateText()
@@ -262,6 +305,8 @@ fun ActionsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Nombre provisional") },
                     singleLine = true,
+                    isError = reportNameError != null,
+                    supportingText = reportNameError?.let { message -> { Text(message) } },
                 )
                 OutlinedTextField(
                     value = description,
@@ -269,6 +314,8 @@ fun ActionsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Descripción") },
                     minLines = 3,
+                    isError = reportDescriptionError != null,
+                    supportingText = reportDescriptionError?.let { message -> { Text(message) } },
                 )
                 OutlinedButton(
                     onClick = { requestCamera(LocationTarget.Report) },
@@ -300,6 +347,13 @@ fun ActionsScreen(
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
+                reportPhotoError?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = latitude,
@@ -307,6 +361,8 @@ fun ActionsScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Latitud") },
                         singleLine = true,
+                        isError = reportLatitudeError != null,
+                        supportingText = reportLatitudeError?.let { message -> { Text(message) } },
                     )
                     OutlinedTextField(
                         value = longitude,
@@ -314,6 +370,8 @@ fun ActionsScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Longitud") },
                         singleLine = true,
+                        isError = reportLongitudeError != null,
+                        supportingText = reportLongitudeError?.let { message -> { Text(message) } },
                     )
                 }
                 OutlinedButton(
@@ -332,13 +390,23 @@ fun ActionsScreen(
                 StatusText(message = message, error = error)
                 Button(
                     onClick = {
-                        onCreateRecord(
-                            provisionalName,
-                            description,
-                            selectedPhotoUri,
-                            latitude,
-                            longitude,
+                        reportSubmitted = true
+                        val currentErrors = listOf(
+                            requiredError(provisionalName, "El nombre provisional"),
+                            maxLengthError(description, 2000, "La descripcion"),
+                            if (selectedPhotoUri == null) "Selecciona o captura una foto." else null,
+                            coordinateError(latitude, "Latitud", -90.0, 90.0),
+                            coordinateError(longitude, "Longitud", -180.0, 180.0),
                         )
+                        if (currentErrors.all { it == null }) {
+                            onCreateRecord(
+                                provisionalName,
+                                description,
+                                selectedPhotoUri,
+                                latitude,
+                                longitude,
+                            )
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isCreateRecordLoading,
@@ -381,6 +449,8 @@ fun ActionsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("ID del registro") },
                     singleLine = true,
+                    isError = observationIdError != null,
+                    supportingText = observationIdError?.let { message -> { Text(message) } },
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.ContentCopy,
@@ -394,6 +464,8 @@ fun ActionsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Nota") },
                     minLines = 2,
+                    isError = observationNoteError != null,
+                    supportingText = observationNoteError?.let { message -> { Text(message) } },
                 )
                 OutlinedButton(
                     onClick = { requestCamera(LocationTarget.Observation) },
@@ -425,6 +497,13 @@ fun ActionsScreen(
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
+                observationPhotoError?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = observationLatitude,
@@ -432,6 +511,8 @@ fun ActionsScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Latitud") },
                         singleLine = true,
+                        isError = observationLatitudeError != null,
+                        supportingText = observationLatitudeError?.let { message -> { Text(message) } },
                     )
                     OutlinedTextField(
                         value = observationLongitude,
@@ -439,6 +520,8 @@ fun ActionsScreen(
                         modifier = Modifier.weight(1f),
                         label = { Text("Longitud") },
                         singleLine = true,
+                        isError = observationLongitudeError != null,
+                        supportingText = observationLongitudeError?.let { message -> { Text(message) } },
                     )
                 }
                 OutlinedButton(
@@ -456,13 +539,23 @@ fun ActionsScreen(
                 }
                 OutlinedButton(
                     onClick = {
-                        onCreateObservation(
-                            recordId,
-                            observationNote,
-                            selectedObservationPhotoUri,
-                            observationLatitude,
-                            observationLongitude,
+                        observationSubmitted = true
+                        val currentErrors = listOf(
+                            requiredError(recordId, "El ID del registro"),
+                            maxLengthError(observationNote, 2000, "La nota"),
+                            if (selectedObservationPhotoUri == null) "Selecciona o captura una foto." else null,
+                            coordinateError(observationLatitude, "Latitud", -90.0, 90.0),
+                            coordinateError(observationLongitude, "Longitud", -180.0, 180.0),
                         )
+                        if (currentErrors.all { it == null }) {
+                            onCreateObservation(
+                                recordId,
+                                observationNote,
+                                selectedObservationPhotoUri,
+                                observationLatitude,
+                                observationLongitude,
+                            )
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isCreateObservationLoading,
@@ -575,4 +668,28 @@ private fun Handler.asExecutor(): java.util.concurrent.Executor {
 
 private fun Double.toCoordinateText(): String {
     return String.format(Locale.US, "%.7f", this)
+}
+
+private fun requiredError(value: String, label: String): String? {
+    return if (value.isBlank()) "$label es obligatorio." else null
+}
+
+private fun maxLengthError(value: String, maxLength: Int, label: String): String? {
+    return if (value.length > maxLength) "$label no puede superar $maxLength caracteres." else null
+}
+
+private fun coordinateError(
+    value: String,
+    label: String,
+    min: Double,
+    max: Double,
+): String? {
+    val number = value.replace(',', '.').toDoubleOrNull()
+        ?: return "$label debe ser un numero valido."
+
+    return if (number !in min..max) {
+        "$label debe estar entre ${min.toInt()} y ${max.toInt()}."
+    } else {
+        null
+    }
 }

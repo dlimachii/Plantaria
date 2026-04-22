@@ -3,6 +3,7 @@ package com.plantaria.app.data.api
 import com.plantaria.app.data.model.ApiUser
 import com.plantaria.app.data.model.AuthResult
 import com.plantaria.app.data.model.ObservationResult
+import com.plantaria.app.data.model.PlantObservation
 import com.plantaria.app.data.model.PlantRecord
 import com.plantaria.app.data.model.RecordAuthor
 import java.io.IOException
@@ -104,6 +105,15 @@ class PlantariaApiClient(
         return response.getJSONArray("data").toPlantRecords()
     }
 
+    suspend fun record(publicId: String): PlantRecord {
+        val response = request(
+            path = "records/${URLEncoder.encode(publicId, Charsets.UTF_8.name())}",
+            method = "GET",
+        )
+
+        return response.getJSONObject("data").toPlantRecord()
+    }
+
     suspend fun createRecord(
         token: String,
         provisionalCommonName: String,
@@ -153,10 +163,12 @@ class PlantariaApiClient(
         )
 
         val data = response.getJSONObject("data")
+        val photoPath = data.getString("photo_path")
         return ObservationResult(
             publicId = data.getString("public_id"),
             recordPublicId = data.getString("record_public_id"),
-            photoPath = data.getString("photo_path"),
+            photoPath = photoPath,
+            photoUrl = publicAssetUrl(data.optNullableString("photo_url"), photoPath),
             note = data.optNullableString("note"),
             latitude = data.optDouble("latitude"),
             longitude = data.optDouble("longitude"),
@@ -259,12 +271,14 @@ class PlantariaApiClient(
     }
 
     private fun JSONObject.toApiUser(): ApiUser {
+        val photoPath = optNullableString("photo_path")
         return ApiUser(
             uid = optNullableString("uid"),
             handle = optString("handle"),
             displayName = optNullableString("display_name"),
             email = optNullableString("email"),
-            photoPath = optNullableString("photo_path"),
+            photoPath = photoPath,
+            photoUrl = publicAssetUrl(optNullableString("photo_url"), photoPath),
             country = optNullableString("country"),
             province = optNullableString("province"),
             city = optNullableString("city"),
@@ -283,6 +297,7 @@ class PlantariaApiClient(
 
     private fun JSONObject.toPlantRecord(): PlantRecord {
         val authorJson = optJSONObject("author")
+        val primaryPhotoPath = optNullableString("primary_photo_path")
         return PlantRecord(
             uid = optNullableString("uid"),
             publicId = optString("public_id"),
@@ -291,21 +306,88 @@ class PlantariaApiClient(
             verifiedScientificName = optNullableString("verified_scientific_name"),
             displayName = optString("display_name", optString("provisional_common_name")),
             description = optNullableString("description"),
-            primaryPhotoPath = optNullableString("primary_photo_path"),
+            primaryPhotoPath = primaryPhotoPath,
+            primaryPhotoUrl = publicAssetUrl(optNullableString("primary_photo_url"), primaryPhotoPath),
             plantCondition = optNullableString("plant_condition"),
             verificationStatus = optNullableString("verification_status"),
             latitude = optDouble("latitude"),
             longitude = optDouble("longitude"),
             latestObservationAt = optNullableString("latest_observation_at"),
             createdAt = optNullableString("created_at"),
-            author = authorJson?.let {
-                RecordAuthor(
-                    handle = it.optNullableString("handle"),
-                    displayName = it.optNullableString("display_name"),
-                    photoPath = it.optNullableString("photo_path"),
-                )
-            },
+            author = authorJson?.toRecordAuthor(),
+            observations = optJSONArray("observations")?.toPlantObservations().orEmpty(),
         )
+    }
+
+    private fun JSONArray.toPlantObservations(): List<PlantObservation> {
+        return buildList {
+            for (index in 0 until length()) {
+                add(getJSONObject(index).toPlantObservation())
+            }
+        }
+    }
+
+    private fun JSONObject.toPlantObservation(): PlantObservation {
+        val photoPath = optNullableString("photo_path")
+        return PlantObservation(
+            publicId = optString("public_id"),
+            photoPath = photoPath,
+            photoUrl = publicAssetUrl(optNullableString("photo_url"), photoPath),
+            note = optNullableString("note"),
+            plantCondition = optNullableString("plant_condition"),
+            latitude = optDouble("latitude"),
+            longitude = optDouble("longitude"),
+            sourceType = optNullableString("source_type"),
+            observedAt = optNullableString("observed_at"),
+            author = optJSONObject("author")?.toRecordAuthor(),
+        )
+    }
+
+    private fun JSONObject.toRecordAuthor(): RecordAuthor {
+        val photoPath = optNullableString("photo_path")
+        return RecordAuthor(
+            handle = optNullableString("handle"),
+            displayName = optNullableString("display_name"),
+            photoPath = photoPath,
+            photoUrl = publicAssetUrl(optNullableString("photo_url"), photoPath),
+        )
+    }
+
+    private fun publicAssetUrl(
+        url: String?,
+        path: String?,
+    ): String? {
+        val normalizedUrl = url?.takeIf { it.isNotBlank() }?.replaceLocalhostWithApiRoot()
+        if (normalizedUrl != null) {
+            return normalizedUrl
+        }
+
+        val normalizedPath = path?.takeIf { it.isNotBlank() }?.trimStart('/') ?: return null
+        return "${apiRootUrl()}storage/$normalizedPath"
+    }
+
+    private fun String.replaceLocalhostWithApiRoot(): String {
+        return runCatching {
+            val parsedUrl = URL(this)
+            if (parsedUrl.host !in setOf("localhost", "127.0.0.1", "0.0.0.0")) {
+                this
+            } else {
+                val apiRoot = URL(apiRootUrl())
+                val port = if (apiRoot.port == -1) "" else ":${apiRoot.port}"
+                "${apiRoot.protocol}://${apiRoot.host}$port${parsedUrl.file}"
+            }
+        }.getOrDefault(this)
+    }
+
+    private fun apiRootUrl(): String {
+        val normalized = baseUrl.normalized()
+        val apiMarker = "/api/"
+        val apiIndex = normalized.indexOf(apiMarker)
+        return if (apiIndex >= 0) {
+            normalized.substring(0, apiIndex + 1)
+        } else {
+            normalized
+        }
     }
 
     private fun JSONObject.putNullable(key: String, value: String?) {

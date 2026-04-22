@@ -69,6 +69,20 @@ fun AuthScreen(
     var country by rememberSaveable { mutableStateOf("España") }
     var province by rememberSaveable { mutableStateOf("") }
     var city by rememberSaveable { mutableStateOf("") }
+    var submitted by rememberSaveable { mutableStateOf(false) }
+
+    val isRegister = mode == AuthMode.Register
+    val apiBaseUrlErrorMessage = if (submitted) apiBaseUrlError(editableApiBaseUrl) else null
+    val handleErrorMessage = if (submitted) handleError(handle, isRegister) else null
+    val displayNameErrorMessage = if (submitted && isRegister) requiredAuthError(displayName, "El nombre visible") else null
+    val emailErrorMessage = if (submitted && isRegister) emailError(email) else null
+    val passwordErrorMessage = if (submitted) passwordError(password, isRegister) else null
+    val passwordConfirmationErrorMessage = if (submitted && isRegister) {
+        passwordConfirmationError(password, passwordConfirmation)
+    } else {
+        null
+    }
+    val countryErrorMessage = if (submitted && isRegister) requiredAuthError(country, "El pais") else null
 
     Column(
         modifier = Modifier
@@ -104,7 +118,10 @@ fun AuthScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = mode == AuthMode.Login,
-                        onClick = { mode = AuthMode.Login },
+                        onClick = {
+                            mode = AuthMode.Login
+                            submitted = false
+                        },
                         label = { Text("Entrar") },
                         leadingIcon = {
                             Icon(
@@ -115,7 +132,10 @@ fun AuthScreen(
                     )
                     FilterChip(
                         selected = mode == AuthMode.Register,
-                        onClick = { mode = AuthMode.Register },
+                        onClick = {
+                            mode = AuthMode.Register
+                            submitted = false
+                        },
                         label = { Text("Registro") },
                         leadingIcon = {
                             Icon(
@@ -136,6 +156,8 @@ fun AuthScreen(
                     label = { Text("URL API") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    isError = apiBaseUrlErrorMessage != null,
+                    supportingText = apiBaseUrlErrorMessage?.let { message -> { Text(message) } },
                 )
 
                 OutlinedTextField(
@@ -144,6 +166,8 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Handle") },
                     singleLine = true,
+                    isError = handleErrorMessage != null,
+                    supportingText = handleErrorMessage?.let { message -> { Text(message) } },
                 )
 
                 if (mode == AuthMode.Register) {
@@ -153,6 +177,8 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Nombre visible") },
                         singleLine = true,
+                        isError = displayNameErrorMessage != null,
+                        supportingText = displayNameErrorMessage?.let { message -> { Text(message) } },
                     )
                     OutlinedTextField(
                         value = email,
@@ -161,6 +187,8 @@ fun AuthScreen(
                         label = { Text("Correo") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        isError = emailErrorMessage != null,
+                        supportingText = emailErrorMessage?.let { message -> { Text(message) } },
                     )
                 }
 
@@ -171,6 +199,8 @@ fun AuthScreen(
                     label = { Text("Contraseña") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
+                    isError = passwordErrorMessage != null,
+                    supportingText = passwordErrorMessage?.let { message -> { Text(message) } },
                 )
 
                 if (mode == AuthMode.Register) {
@@ -181,6 +211,8 @@ fun AuthScreen(
                         label = { Text("Repetir contraseña") },
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
+                        isError = passwordConfirmationErrorMessage != null,
+                        supportingText = passwordConfirmationErrorMessage?.let { message -> { Text(message) } },
                     )
                     OutlinedTextField(
                         value = country,
@@ -188,6 +220,8 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("País") },
                         singleLine = true,
+                        isError = countryErrorMessage != null,
+                        supportingText = countryErrorMessage?.let { message -> { Text(message) } },
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
@@ -211,20 +245,39 @@ fun AuthScreen(
 
                 Button(
                     onClick = {
+                        submitted = true
                         if (mode == AuthMode.Login) {
-                            onLogin(editableApiBaseUrl, handle, password)
-                        } else {
-                            onRegister(
-                                editableApiBaseUrl,
-                                handle,
-                                displayName,
-                                email,
-                                password,
-                                passwordConfirmation,
-                                country,
-                                province,
-                                city,
+                            val currentErrors = listOf(
+                                apiBaseUrlError(editableApiBaseUrl),
+                                handleError(handle, isRegister = false),
+                                passwordError(password, isRegister = false),
                             )
+                            if (currentErrors.all { it == null }) {
+                                onLogin(editableApiBaseUrl, handle, password)
+                            }
+                        } else {
+                            val currentErrors = listOf(
+                                apiBaseUrlError(editableApiBaseUrl),
+                                handleError(handle, isRegister = true),
+                                requiredAuthError(displayName, "El nombre visible"),
+                                emailError(email),
+                                passwordError(password, isRegister = true),
+                                passwordConfirmationError(password, passwordConfirmation),
+                                requiredAuthError(country, "El pais"),
+                            )
+                            if (currentErrors.all { it == null }) {
+                                onRegister(
+                                    editableApiBaseUrl,
+                                    handle,
+                                    displayName,
+                                    email,
+                                    password,
+                                    passwordConfirmation,
+                                    country,
+                                    province,
+                                    city,
+                                )
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -264,5 +317,61 @@ fun StatusText(
             style = MaterialTheme.typography.bodyMedium,
             color = PlantariaColors.Leaf,
         )
+    }
+}
+
+private fun apiBaseUrlError(value: String): String? {
+    val trimmed = value.trim()
+    return when {
+        trimmed.isBlank() -> "La URL de API es obligatoria."
+        !trimmed.startsWith("http://") && !trimmed.startsWith("https://") -> {
+            "La URL debe empezar por http:// o https://."
+        }
+        else -> null
+    }
+}
+
+private fun handleError(value: String, isRegister: Boolean): String? {
+    val trimmed = value.trim()
+    return when {
+        trimmed.isBlank() -> "El handle es obligatorio."
+        trimmed.length > 16 -> "El handle no puede superar 16 caracteres."
+        isRegister && trimmed.length < 3 -> "El handle debe tener al menos 3 caracteres."
+        isRegister && !trimmed.matches(Regex("^[A-Za-z0-9_.]+$")) -> {
+            "Usa solo letras, numeros, guion bajo o punto."
+        }
+        else -> null
+    }
+}
+
+private fun requiredAuthError(value: String, label: String): String? {
+    return if (value.isBlank()) "$label es obligatorio." else null
+}
+
+private fun emailError(value: String): String? {
+    val trimmed = value.trim()
+    return when {
+        trimmed.isBlank() -> "El correo es obligatorio."
+        !trimmed.contains('@') || !trimmed.substringAfter('@').contains('.') -> "Introduce un correo valido."
+        else -> null
+    }
+}
+
+private fun passwordError(value: String, isRegister: Boolean): String? {
+    return when {
+        value.isBlank() -> "La contrasena es obligatoria."
+        isRegister && value.length < 8 -> "La contrasena debe tener al menos 8 caracteres."
+        isRegister && !value.any { it.isLowerCase() } -> "La contrasena necesita una minuscula."
+        isRegister && !value.any { it.isUpperCase() } -> "La contrasena necesita una mayuscula."
+        isRegister && !value.any { it.isDigit() } -> "La contrasena necesita un numero."
+        else -> null
+    }
+}
+
+private fun passwordConfirmationError(password: String, confirmation: String): String? {
+    return when {
+        confirmation.isBlank() -> "Repite la contrasena."
+        password != confirmation -> "Las contrasenas no coinciden."
+        else -> null
     }
 }

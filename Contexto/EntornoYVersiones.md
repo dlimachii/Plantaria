@@ -187,6 +187,13 @@ Opciones razonables:
 - entorno algo más serio: almacenamiento compatible con S3;
 - si se quiere entorno local reproducible: MinIO como opción práctica.
 
+Estado actualizado: 2026-04-22 18:16 CEST.
+
+- El backend devuelve `primary_photo_url` y `photo_url` para registros y observaciones.
+- Android usa esas URLs para pintar fotos reales en mapa/ficha.
+- Si Laravel devuelve una URL con `localhost`, el cliente Android la normaliza usando la raíz de `BuildConfig.PLANTARIA_API_BASE_URL` o la URL editable guardada por el usuario.
+- Para que las URLs funcionen en una instalación limpia, sigue siendo necesario ejecutar `php artisan storage:link` en `backend/`.
+
 ## Notas importantes de arquitectura
 
 - Los tiles públicos de OpenStreetMap no deben asumirse como solución de producción estable ni con SLA.
