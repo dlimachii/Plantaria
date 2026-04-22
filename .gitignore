@@ -1,0 +1,51 @@
+# Local agent/runtime files
+.codex
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Root-level temporary installers
+composer-setup.php
+
+# Python analytics
+analytics/.venv/
+analytics/venv/
+analytics/__pycache__/
+analytics/.pytest_cache/
+analytics/output/
+*.py[cod]
+
+# Laravel backend generated/local files
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.phpunit.cache/
+backend/.phpunit.result.cache
+backend/storage/logs/*.log
+backend/storage/app/public/
+backend/public/build/
+backend/public/hot
+backend/public/storage
+backend/database/*.sqlite*
+
+# Android/Gradle generated files
+android/.gradle/
+android/.gradle-home/
+android/.gradle-*-bootstrap/
+android/.kotlin/
+android/local.properties
+android/captures/
+android/build/
+android/app/build/
