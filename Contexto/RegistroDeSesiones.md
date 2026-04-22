@@ -86,6 +86,15 @@
 - Se añadieron tests de panel admin: login, bloqueo de usuario normal y verificación web de registro.
 - Validaciones ejecutadas: `php artisan test` pasa con 9 tests y 45 assertions; `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`.
 
+### Panel web de flags y usuarios
+
+- Fecha: 2026-04-22 19:07 CEST.
+- Se añadieron rutas web `/admin/flags` y `/admin/flags/{uid}` para listar denuncias, filtrar por estado y actualizar estado desde el panel.
+- Se añadieron rutas web `/admin/users`, `/admin/users/{handle}` y actualización de usuario para listar, filtrar y editar usuarios desde administración.
+- La navegación del panel muestra `Flags` a `MOD`/`ADMIN` y `Usuarios` solo a `ADMIN`.
+- Se añadieron tests de panel admin para actualizar flags desde moderación y editar usuarios desde administración.
+- Validaciones ejecutadas: `php artisan test` pasa con 11 tests y 56 assertions; `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`.
+
 ## 2026-04-21
 
 ### Recuperación de instalación Android

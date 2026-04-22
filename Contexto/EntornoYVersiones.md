@@ -78,7 +78,7 @@ Estado actualizado: 2026-04-22 17:30 CEST.
 
 ## Panel web Laravel
 
-Estado actualizado: 2026-04-22 18:45 CEST.
+Estado actualizado: 2026-04-22 19:07 CEST.
 
 - Rutas web bajo `/admin`.
 - Login web en `/admin/login` usando handle o email.
@@ -86,6 +86,8 @@ Estado actualizado: 2026-04-22 18:45 CEST.
 - Dashboard básico en `/admin`.
 - Cola de moderación en `/admin/moderation/pending`.
 - Detalle y acciones de verificar/rechazar en `/admin/moderation/records/{publicId}`.
+- Gestión de flags en `/admin/flags` para roles `mod` y `admin`.
+- Gestión básica de usuarios en `/admin/users` para rol `admin`.
 
 ## Estado observado del entorno local en esta sesión
 

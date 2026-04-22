@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminSessionController;
+use App\Http\Controllers\Web\FlagPanelController;
 use App\Http\Controllers\Web\ModerationPanelController;
+use App\Http\Controllers\Web\UserPanelController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,4 +28,11 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
         Route::post('/records/{publicId}/verify', [ModerationPanelController::class, 'verify'])->name('verify');
         Route::post('/records/{publicId}/reject', [ModerationPanelController::class, 'reject'])->name('reject');
     });
+
+    Route::get('/flags', [FlagPanelController::class, 'index'])->name('flags.index');
+    Route::post('/flags/{uid}', [FlagPanelController::class, 'update'])->name('flags.update');
+
+    Route::get('/users', [UserPanelController::class, 'index'])->name('users.index');
+    Route::get('/users/{handle}', [UserPanelController::class, 'show'])->name('users.show');
+    Route::post('/users/{handle}', [UserPanelController::class, 'update'])->name('users.update');
 });

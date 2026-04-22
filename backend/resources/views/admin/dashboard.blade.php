@@ -11,7 +11,13 @@
     <div class="card" style="margin-top: 18px;">
         <div class="actions" style="justify-content: space-between;">
             <h2 style="margin: 0;">Moderacion pendiente</h2>
-            <a class="button" href="{{ route('admin.moderation.pending') }}">Abrir cola</a>
+            <div class="actions">
+                <a class="button" href="{{ route('admin.moderation.pending') }}">Abrir cola</a>
+                <a class="button secondary" href="{{ route('admin.flags.index') }}">Ver flags</a>
+                @if (auth()->user()->isAdmin())
+                    <a class="button secondary" href="{{ route('admin.users.index') }}">Gestionar usuarios</a>
+                @endif
+            </div>
         </div>
     </div>
 

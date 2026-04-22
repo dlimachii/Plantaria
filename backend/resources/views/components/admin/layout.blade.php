@@ -47,6 +47,10 @@
         <nav>
             <a href="{{ route('admin.dashboard') }}">Resumen</a>
             <a href="{{ route('admin.moderation.pending') }}">Pendientes</a>
+            <a href="{{ route('admin.flags.index') }}">Flags</a>
+            @if (auth()->user()->isAdmin())
+                <a href="{{ route('admin.users.index') }}">Usuarios</a>
+            @endif
             <form method="post" action="{{ route('admin.logout') }}">
                 @csrf
                 <button class="secondary" type="submit">Salir</button>

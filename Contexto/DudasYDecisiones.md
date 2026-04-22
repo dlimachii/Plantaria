@@ -372,6 +372,22 @@ Motivo:
 
 El sistema necesita una forma defendible de validar reportes sin depender solo de endpoints API. Un panel mínimo cubre el flujo central de moderación del MVP y encaja con el alcance del TFC.
 
+### Ampliación del panel web con flags y usuarios
+
+Estado: resuelta
+
+Fecha: 2026-04-22 19:07 CEST
+
+Decisión:
+
+- añadir una pantalla web `/admin/flags` para que `MOD` y `ADMIN` revisen denuncias y cambien su estado;
+- añadir una pantalla web `/admin/users` para que solo `ADMIN` filtre usuarios y edite rol, estado y datos básicos;
+- mantener la analítica visual como siguiente ampliación del panel, separada de la moderación operativa.
+
+Motivo:
+
+Flags y usuarios son funciones administrativas necesarias para que el panel no se limite a verificar registros. Separarlas por permisos mantiene claro el reparto entre moderación y administración.
+
 ## Dudas abiertas
 
 ### Cliente web público en el TFC

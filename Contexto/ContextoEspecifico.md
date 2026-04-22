@@ -31,7 +31,9 @@ Capacidades ya implementadas:
 - verificación de registros por moderación;
 - panel API de analítica;
 - gestión administrativa básica de usuarios.
-- panel web mínimo de moderación/admin con login de `MOD`/`ADMIN`, dashboard, cola de pendientes, detalle de registro y acciones de verificar/rechazar.
+- panel web de moderación/admin con login de `MOD`/`ADMIN`, dashboard, cola de pendientes, detalle de registro y acciones de verificar/rechazar.
+- actualización 2026-04-22 19:07 CEST: el panel web también incluye listado/filtro de flags y cambio de estado por moderadores/admins.
+- actualización 2026-04-22 19:07 CEST: el panel web también incluye listado/filtro de usuarios y edición básica de rol, estado y datos de ubicación por admins.
 
 ### Dominio implementado
 
@@ -75,7 +77,7 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
-Actualización: 2026-04-22 18:45 CEST.
+Actualización: 2026-04-22 19:07 CEST.
 
 Estado actual:
 
@@ -112,7 +114,7 @@ Estado actual:
 Validación realizada:
 
 - `./gradlew :app:assembleDebug` ejecutado correctamente;
-- `php artisan test` ejecutado correctamente con 9 tests y 45 assertions;
+- `php artisan test` ejecutado correctamente con 11 tests y 56 assertions;
 - APK debug generado en `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 Pendiente:
@@ -794,6 +796,12 @@ Recomendación:
 
 - no hacer una web pública completa con paridad total respecto a móvil en el primer corte;
 - sí hacer un panel web administrativo y de moderación, porque tiene sentido de uso real y mejora la defensa del TFC.
+
+Estado actualizado 2026-04-22 19:07 CEST:
+
+- el panel web Laravel ya cubre login, dashboard, revisión de registros pendientes, detalle, verificación/rechazo, gestión de flags y gestión básica de usuarios;
+- la gestión de flags está disponible para `MOD` y `ADMIN`;
+- la gestión de usuarios está limitada a `ADMIN`.
 
 ## Fuera de alcance inicial
 
