@@ -67,7 +67,7 @@ Estado aproximado del MVP Android + backend + panel: 78%.
 Ya está hecho y validado:
 
 - backend Laravel con Sanctum, PostgreSQL/PostGIS, usuarios, registros, observaciones, flags, moderación básica, analítica API y subida de fotos;
-- tests backend pasando con `php artisan test`: 6 tests, 32 assertions;
+- tests backend pasando con `php artisan test`: 9 tests, 45 assertions;
 - proyecto Android compilable con Kotlin + Jetpack Compose;
 - login, registro, token persistido con DataStore y URL de API editable para emulador/móvil físico;
 - mapa real MapLibre Native Android con estilo `https://demotiles.maplibre.org/style.json`;
