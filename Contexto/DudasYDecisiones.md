@@ -320,6 +320,23 @@ Motivo:
 
 En emulador y móvil físico, una URL generada como `localhost` apuntaría al propio dispositivo, no al backend Laravel. Normalizar desde la URL de API evita romper la demo local sin acoplar la UI a un host fijo.
 
+### Ubicación real en mapa Android
+
+Estado: resuelta
+
+Fecha: 2026-04-22 18:30 CEST
+
+Decisión:
+
+- el mapa no solicita permisos automáticamente si todavía no existen;
+- si el permiso ya está concedido, intenta centrar al entrar en la pantalla;
+- si no está concedido, el usuario puede pulsar `Mi ubicación` para solicitar permiso y centrar;
+- se muestra un marcador `Tu ubicación` además de los marcadores de registros.
+
+Motivo:
+
+Evita una solicitud invasiva de permisos al abrir la app, pero permite demostrar claramente que el mapa puede usar ubicación real cuando el usuario lo autoriza.
+
 ## Dudas abiertas
 
 ### Cliente web público en el TFC

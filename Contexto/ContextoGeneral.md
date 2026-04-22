@@ -52,16 +52,16 @@ Arrancar el TFC con una base realista y defendible:
 
 Completar la integración funcional Android:
 
-- centrar el mapa en la ubicación real del usuario cuando haya permiso;
 - validar en móvil físico el flujo completo de mapa, ficha, fotos, cámara, GPS y API local;
 - pulir estados visuales y rendimiento real del mapa en hardware físico;
+- mejorar buscador de mapa con geocodificación/lugares;
 - decidir proveedor/estrategia de tiles para no depender del estilo demo de MapLibre en producción.
 
 ## Estado para próxima sesión
 
-Fecha de corte: 2026-04-22 18:16 CEST.
+Fecha de corte: 2026-04-22 18:30 CEST.
 
-Estado aproximado del MVP Android + backend: 70%.
+Estado aproximado del MVP Android + backend: 72%.
 
 Ya está hecho y validado:
 
@@ -76,13 +76,15 @@ Ya está hecho y validado:
 - subida real de fotos a `/api/uploads/photos`;
 - creación de reportes y observaciones desde Android;
 - botón para rellenar coordenadas con ubicación actual o última conocida;
+- mapa centrable en la ubicación real del usuario si ya hay permiso o al pulsar el botón `Mi ubicación`;
+- marcador de ubicación del usuario en el mapa;
 - ficha completa de registro al tocar la preview del mapa, cargando `/api/records/{publicId}`;
 - fotos reales visibles en preview, ficha y observaciones mediante URLs públicas del backend;
 - validaciones por campo en autenticación, creación de reporte y creación de observación;
 - datos demo seedables y cargados en PostgreSQL local alrededor de Barcelona;
 - APK debug generado en `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-Revalidación del 2026-04-22 18:16 CEST:
+Revalidación del 2026-04-22 18:30 CEST:
 
 - `php artisan test` en `backend/`: 6 tests, 32 assertions, todo pasando;
 - `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
@@ -97,8 +99,9 @@ No se ha podido validar todavía porque falta el móvil físico:
 
 Siguiente paso recomendado si no está el móvil:
 
-- centrar el mapa en ubicación real del usuario cuando haya permiso;
 - mejorar buscador de mapa con geocodificación/lugares;
+- mejorar flujo desde ficha a observación para no copiar ID manualmente;
+- empezar panel web mínimo de moderación/admin;
 - preparar estados vacíos/carga/error más pulidos para demo.
 
 Siguiente paso recomendado cuando esté el móvil:

@@ -57,6 +57,15 @@
 - Los formularios de reporte/observación limpian campos principales tras éxito.
 - Validaciones ejecutadas: `php artisan test` pasa con 6 tests y 32 assertions; `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`.
 
+### Ubicación real en pantalla de mapa
+
+- Fecha: 2026-04-22 18:30 CEST.
+- La pantalla de mapa intenta usar ubicación real del usuario si el permiso ya está concedido.
+- Se añadió botón `Mi ubicación` para solicitar permisos de ubicación y centrar el mapa manualmente.
+- Se añade un marcador `Tu ubicación` junto a los marcadores de registros.
+- Si no hay proveedor o última ubicación disponible, la UI muestra un estado de error controlado y mantiene el mapa funcional.
+- Validaciones ejecutadas: `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`; `php artisan test` pasa con 6 tests y 32 assertions.
+
 ## 2026-04-21
 
 ### Recuperación de instalación Android

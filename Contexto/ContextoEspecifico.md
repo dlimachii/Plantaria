@@ -74,7 +74,7 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
-Actualización: 2026-04-22 18:16 CEST.
+Actualización: 2026-04-22 18:30 CEST.
 
 Estado actual:
 
@@ -104,6 +104,8 @@ Estado actual:
 - carga visual de fotos reales en preview, ficha y observaciones;
 - normalización Android de URLs de fotos para sustituir `localhost` por la raíz de la API configurada cuando haga falta;
 - validaciones por campo en login/registro, nuevo reporte y nueva observación.
+- centrado del mapa en ubicación real del usuario si el permiso ya existe o al pulsar el botón `Mi ubicación`;
+- marcador de ubicación del usuario en el mapa.
 
 Validación realizada:
 
@@ -112,7 +114,6 @@ Validación realizada:
 
 Pendiente:
 
-- centrar el mapa en la ubicación del usuario cuando haya permiso;
 - validar el flujo completo en móvil físico.
 
 ## Visión funcional

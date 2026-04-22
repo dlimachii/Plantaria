@@ -1,5 +1,17 @@
 package com.plantaria.app.ui.screens
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import android.os.Build
+import android.os.CancellationSignal
+import android.os.Handler
+import android.os.Looper
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +81,7 @@ import org.maplibre.android.maps.MapView
 private const val MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json"
 private const val DEFAULT_LATITUDE = 41.3874
 private const val DEFAULT_LONGITUDE = 2.1686
+private const val USER_LOCATION_MARKER = "__plantaria_user_location__"
 
 private data class MapRecordPreview(
     val id: String,
@@ -77,6 +90,13 @@ private data class MapRecordPreview(
     val status: String?,
     val authorHandle: String?,
     val photoUrl: String?,
+    val latitude: Double,
+    val longitude: Double,
+) {
+    val coordinatesText: String = String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
+}
+
+private data class MapUserLocation(
     val latitude: Double,
     val longitude: Double,
 ) {
@@ -98,13 +118,67 @@ fun MapScreen(
     onRecordPreviewClick: (String) -> Unit,
     onCloseRecordDetail: () -> Unit,
 ) {
+    val context = LocalContext.current
     val previews = records.map { record -> record.toMapPreview() }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val selectedRecord = previews.firstOrNull { it.id == selectedId } ?: previews.firstOrNull()
+    var userLocation by remember { mutableStateOf<MapUserLocation?>(null) }
+    var locationStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedRecord = selectedId?.let { id -> previews.firstOrNull { it.id == id } }
+    val previewRecord = selectedRecord ?: previews.firstOrNull()
+
+    fun applyUserLocation(location: Location) {
+        userLocation = MapUserLocation(
+            latitude = location.latitude,
+            longitude = location.longitude,
+        )
+        locationStatus = "Mapa centrado en tu ubicacion."
+    }
+
+    fun loadUserLocation() {
+        locationStatus = "Buscando ubicacion..."
+        context.fetchPlantariaMapLocation(
+            onLocation = ::applyUserLocation,
+            onUnavailable = {
+                locationStatus = "No hay ubicacion disponible. Revisa GPS o permisos."
+            },
+        )
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (granted) {
+            loadUserLocation()
+        } else {
+            locationStatus = "Permiso de ubicacion denegado."
+        }
+    }
+
+    fun requestUserLocation() {
+        if (context.hasPlantariaMapLocationPermission()) {
+            loadUserLocation()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                )
+            )
+        }
+    }
 
     LaunchedEffect(previews) {
         if (selectedId != null && previews.none { it.id == selectedId }) {
-            selectedId = previews.firstOrNull()?.id
+            selectedId = null
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (context.hasPlantariaMapLocationPermission()) {
+            loadUserLocation()
         }
     }
 
@@ -117,6 +191,7 @@ fun MapScreen(
         PlantariaMapView(
             records = previews,
             selectedRecord = selectedRecord,
+            userLocation = userLocation,
             onRecordSelected = { selectedId = it },
             modifier = Modifier.fillMaxSize(),
         )
@@ -131,7 +206,7 @@ fun MapScreen(
                 onQueryChange = onSearchQueryChange,
                 onSearchSubmit = onSearchSubmit,
             )
-            StatusText(message = null, error = error)
+            StatusText(message = locationStatus, error = error)
             Spacer(modifier = Modifier.weight(1f))
             when {
                 selectedRecordDetail != null || isRecordDetailLoading || recordDetailError != null -> RecordDetailCard(
@@ -141,9 +216,10 @@ fun MapScreen(
                     onClose = onCloseRecordDetail,
                 )
                 isLoading -> LoadingCard("Cargando registros")
-                selectedRecord != null -> RecordPreviewCard(
-                    record = selectedRecord,
-                    onClick = { onRecordPreviewClick(selectedRecord.id) },
+                previewRecord != null -> RecordPreviewCard(
+                    record = previewRecord,
+                    userLocation = userLocation,
+                    onClick = { onRecordPreviewClick(previewRecord.id) },
                 )
                 else -> EmptyMapCard()
             }
@@ -163,6 +239,21 @@ fun MapScreen(
                 tint = PlantariaColors.Leaf,
             )
         }
+
+        IconButton(
+            onClick = ::requestUserLocation,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 144.dp, end = 16.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.MyLocation,
+                contentDescription = "Centrar en mi ubicacion",
+                tint = PlantariaColors.Earth,
+            )
+        }
     }
 }
 
@@ -170,6 +261,7 @@ fun MapScreen(
 private fun PlantariaMapView(
     records: List<MapRecordPreview>,
     selectedRecord: MapRecordPreview?,
+    userLocation: MapUserLocation?,
     onRecordSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -246,7 +338,7 @@ private fun PlantariaMapView(
         modifier = modifier,
     )
 
-    LaunchedEffect(mapLibreMap, styleLoaded, records, selectedRecord?.id) {
+    LaunchedEffect(mapLibreMap, styleLoaded, records, selectedRecord?.id, userLocation) {
         val map = mapLibreMap ?: return@LaunchedEffect
         if (!styleLoaded) {
             return@LaunchedEffect
@@ -255,6 +347,7 @@ private fun PlantariaMapView(
         map.renderRecords(
             records = records,
             selectedRecord = selectedRecord,
+            userLocation = userLocation,
             onRecordSelected = onRecordSelected,
         )
     }
@@ -263,12 +356,24 @@ private fun PlantariaMapView(
 private fun MapLibreMap.renderRecords(
     records: List<MapRecordPreview>,
     selectedRecord: MapRecordPreview?,
+    userLocation: MapUserLocation?,
     onRecordSelected: (String) -> Unit,
 ) {
     clear()
     setOnMarkerClickListener { marker ->
-        marker.snippet?.let(onRecordSelected)
+        marker.snippet
+            ?.takeIf { it != USER_LOCATION_MARKER }
+            ?.let(onRecordSelected)
         true
+    }
+
+    userLocation?.let { location ->
+        addMarker(
+            MarkerOptions()
+                .position(location.toLatLng())
+                .title("Tu ubicacion")
+                .snippet(USER_LOCATION_MARKER),
+        )
     }
 
     records.forEach { record ->
@@ -280,8 +385,11 @@ private fun MapLibreMap.renderRecords(
         )
     }
 
-    val target = selectedRecord?.toLatLng() ?: LatLng(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
-    val zoom = if (records.isEmpty()) 11.0 else 14.0
+    val target = selectedRecord?.toLatLng()
+        ?: userLocation?.toLatLng()
+        ?: records.firstOrNull()?.toLatLng()
+        ?: LatLng(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
+    val zoom = if (selectedRecord != null || userLocation != null) 14.0 else 11.0
     cameraPosition = CameraPosition.Builder()
         .target(target)
         .zoom(zoom)
@@ -324,6 +432,7 @@ private fun MapSearchBar(
 @Composable
 private fun RecordPreviewCard(
     record: MapRecordPreview,
+    userLocation: MapUserLocation?,
     onClick: () -> Unit,
 ) {
     ElevatedCard(
@@ -377,6 +486,13 @@ private fun RecordPreviewCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                userLocation?.let {
+                    Text(
+                        text = "Tu ubicacion: ${it.coordinatesText}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     text = "Toca la tarjeta para abrir la ficha",
                     style = MaterialTheme.typography.labelSmall,
@@ -643,6 +759,85 @@ private fun MapRecordPreview.toLatLng(): LatLng {
     return LatLng(latitude, longitude)
 }
 
+private fun MapUserLocation.toLatLng(): LatLng {
+    return LatLng(latitude, longitude)
+}
+
 private fun String.toReadableDateTime(): String {
     return take(16).replace('T', ' ')
+}
+
+private fun Context.hasPlantariaMapLocationPermission(): Boolean {
+    return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+}
+
+@SuppressLint("MissingPermission")
+private fun Context.fetchPlantariaMapLocation(
+    onLocation: (Location) -> Unit,
+    onUnavailable: () -> Unit,
+) {
+    val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+    if (locationManager == null) {
+        onUnavailable()
+        return
+    }
+
+    val allowFineLocation = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    val provider = locationManager.bestPlantariaMapProvider(allowFineLocation)
+    if (provider == null) {
+        locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+        return
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        runCatching {
+            locationManager.getCurrentLocation(
+                provider,
+                CancellationSignal(),
+                Handler(Looper.getMainLooper()).asExecutor(),
+            ) { location ->
+                location
+                    ?.let(onLocation)
+                    ?: locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation)
+                    ?: onUnavailable()
+            }
+        }.onFailure {
+            locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+        }
+    } else {
+        locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+    }
+}
+
+private fun LocationManager.bestPlantariaMapProvider(allowFineLocation: Boolean): String? {
+    val enabledProviders = runCatching { getProviders(true) }.getOrDefault(emptyList())
+    return plantariaMapProviders(allowFineLocation)
+        .firstOrNull { provider -> provider in enabledProviders }
+}
+
+@SuppressLint("MissingPermission")
+private fun LocationManager.latestKnownPlantariaMapLocation(allowFineLocation: Boolean): Location? {
+    return plantariaMapProviders(allowFineLocation).mapNotNull { provider ->
+        runCatching { getLastKnownLocation(provider) }.getOrNull()
+    }.maxByOrNull { location -> location.time }
+}
+
+private fun plantariaMapProviders(allowFineLocation: Boolean): List<String> {
+    return if (allowFineLocation) {
+        listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER,
+        )
+    } else {
+        listOf(
+            LocationManager.NETWORK_PROVIDER,
+            LocationManager.PASSIVE_PROVIDER,
+        )
+    }
+}
+
+private fun Handler.asExecutor(): java.util.concurrent.Executor {
+    return java.util.concurrent.Executor { command -> post(command) }
 }

@@ -50,6 +50,13 @@ Decisión operativa:
 - Leaflet 1.9.4 si se hace mapa web en panel o cliente web futuro;
 - capa móvil Android con MapLibre Native Android.
 
+Estado actualizado: 2026-04-22 18:30 CEST.
+
+- La pantalla de mapa Android solicita permisos de ubicación fina/aproximada al pulsar `Mi ubicación`.
+- Si el permiso ya estaba concedido, intenta centrar el mapa automáticamente al entrar.
+- Usa `LocationManager.getCurrentLocation` en Android R+ y última ubicación conocida como fallback.
+- Mantiene las coordenadas manuales en formularios como alternativa cuando GPS/permisos no estén disponibles.
+
 ## Herramientas auxiliares recomendadas
 
 - Docker Compose para levantar backend, base de datos y servicios auxiliares.
