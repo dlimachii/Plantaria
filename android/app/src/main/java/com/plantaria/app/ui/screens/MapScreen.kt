@@ -39,7 +39,9 @@ import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -117,6 +119,7 @@ fun MapScreen(
     onSearchSubmit: () -> Unit,
     onRecordPreviewClick: (String) -> Unit,
     onCloseRecordDetail: () -> Unit,
+    onAddObservationForRecord: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val previews = records.map { record -> record.toMapPreview() }
@@ -214,6 +217,7 @@ fun MapScreen(
                     isLoading = isRecordDetailLoading,
                     error = recordDetailError,
                     onClose = onCloseRecordDetail,
+                    onAddObservation = onAddObservationForRecord,
                 )
                 isLoading -> LoadingCard("Cargando registros")
                 previewRecord != null -> RecordPreviewCard(
@@ -525,6 +529,7 @@ private fun RecordDetailCard(
     isLoading: Boolean,
     error: String?,
     onClose: () -> Unit,
+    onAddObservation: (String) -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier
@@ -566,14 +571,20 @@ private fun RecordDetailCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
-                record != null -> RecordDetailContent(record)
+                record != null -> RecordDetailContent(
+                    record = record,
+                    onAddObservation = { onAddObservation(record.publicId) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun RecordDetailContent(record: PlantRecord) {
+private fun RecordDetailContent(
+    record: PlantRecord,
+    onAddObservation: () -> Unit,
+) {
     RemotePlantariaImage(
         imageUrl = record.primaryPhotoUrl,
         contentDescription = "Foto principal de ${record.displayName}",
@@ -587,6 +598,20 @@ private fun RecordDetailContent(record: PlantRecord) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StatusChip(record.verificationStatus)
         record.plantCondition?.let { TextChip("Estado: $it") }
+    }
+
+    Button(
+        onClick = onAddObservation,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Update,
+            contentDescription = null,
+        )
+        Text(
+            text = "Anadir observacion",
+            modifier = Modifier.padding(start = 8.dp),
+        )
     }
 
     DetailLine(label = "ID", value = record.publicId)

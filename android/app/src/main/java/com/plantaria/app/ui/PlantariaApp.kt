@@ -115,11 +115,23 @@ fun PlantariaApp(
                     onSearchSubmit = viewModel::refreshRecords,
                     onRecordPreviewClick = viewModel::openRecordDetail,
                     onCloseRecordDetail = viewModel::closeRecordDetail,
+                    onAddObservationForRecord = { publicId ->
+                        viewModel.prepareObservationForRecord(publicId)
+                        navController.navigate(PlantariaDestination.Actions.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                 )
             }
             composable(PlantariaDestination.Actions.route) {
                 ActionsScreen(
                     contentPadding = innerPadding,
+                    prefilledObservationRecordId = uiState.observationRecordPrefillId,
+                    observationPrefillVersion = uiState.observationRecordPrefillVersion,
                     isCreateRecordLoading = uiState.isCreateRecordLoading,
                     isCreateObservationLoading = uiState.isCreateObservationLoading,
                     message = uiState.message,

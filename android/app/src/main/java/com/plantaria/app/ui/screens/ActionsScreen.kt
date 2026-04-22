@@ -60,6 +60,8 @@ import java.util.Locale
 @Composable
 fun ActionsScreen(
     contentPadding: PaddingValues,
+    prefilledObservationRecordId: String?,
+    observationPrefillVersion: Int,
     isCreateRecordLoading: Boolean,
     isCreateObservationLoading: Boolean,
     message: String?,
@@ -118,6 +120,13 @@ fun ActionsScreen(
         coordinateError(observationLongitude, "Longitud", -180.0, 180.0)
     } else {
         null
+    }
+
+    LaunchedEffect(prefilledObservationRecordId, observationPrefillVersion) {
+        val publicId = prefilledObservationRecordId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        recordId = publicId
+        observationSubmitted = false
+        localStatus = "Registro seleccionado para observar: $publicId"
     }
 
     LaunchedEffect(message) {

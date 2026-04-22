@@ -337,6 +337,23 @@ Motivo:
 
 Evita una solicitud invasiva de permisos al abrir la app, pero permite demostrar claramente que el mapa puede usar ubicación real cuando el usuario lo autoriza.
 
+### Flujo de observaciones desde ficha Android
+
+Estado: resuelta
+
+Fecha: 2026-04-22 18:35 CEST
+
+Decisión:
+
+- la ficha de registro incluye una acción `Añadir observación`;
+- al pulsarla se navega a `Acciones`;
+- el formulario de observación recibe el `public_id` del registro y lo prellena;
+- se mantiene el campo editable para permitir corrección manual o uso avanzado.
+
+Motivo:
+
+Evita que el usuario tenga que copiar IDs manualmente desde la ficha, reduce errores y conecta mejor el flujo principal de mapa con el seguimiento temporal.
+
 ## Dudas abiertas
 
 ### Cliente web público en el TFC

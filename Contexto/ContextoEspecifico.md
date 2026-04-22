@@ -74,7 +74,7 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
-Actualización: 2026-04-22 18:30 CEST.
+Actualización: 2026-04-22 18:35 CEST.
 
 Estado actual:
 
@@ -106,6 +106,7 @@ Estado actual:
 - validaciones por campo en login/registro, nuevo reporte y nueva observación.
 - centrado del mapa en ubicación real del usuario si el permiso ya existe o al pulsar el botón `Mi ubicación`;
 - marcador de ubicación del usuario en el mapa.
+- botón `Añadir observación` en la ficha de registro para abrir `Acciones` con el ID del registro ya prellenado.
 
 Validación realizada:
 

@@ -66,6 +66,15 @@
 - Si no hay proveedor o última ubicación disponible, la UI muestra un estado de error controlado y mantiene el mapa funcional.
 - Validaciones ejecutadas: `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`; `php artisan test` pasa con 6 tests y 32 assertions.
 
+### Flujo ficha a observación
+
+- Fecha: 2026-04-22 18:35 CEST.
+- Se añadió botón `Añadir observación` en la ficha completa de registro del mapa.
+- Al pulsarlo, la app navega a `Acciones` y prellena el campo `ID del registro`.
+- Se añadió estado en `PlantariaViewModel` para transportar el ID y versionar el prellenado incluso si se repite el mismo registro.
+- El formulario mantiene el ID editable y muestra estado local indicando el registro seleccionado.
+- Validaciones ejecutadas: `./gradlew :app:assembleDebug` pasa con `BUILD SUCCESSFUL`; `php artisan test` pasa con 6 tests y 32 assertions.
+
 ## 2026-04-21
 
 ### Recuperación de instalación Android

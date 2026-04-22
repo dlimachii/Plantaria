@@ -175,6 +175,15 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         )
     }
 
+    fun prepareObservationForRecord(publicId: String) {
+        uiState = uiState.copy(
+            selectedRecordDetail = null,
+            recordDetailError = null,
+            observationRecordPrefillId = publicId,
+            observationRecordPrefillVersion = uiState.observationRecordPrefillVersion + 1,
+        )
+    }
+
     fun createRecord(
         provisionalCommonName: String,
         description: String,
@@ -270,6 +279,7 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
             }.onSuccess { observation ->
                 uiState = uiState.copy(
                     message = "Observación añadida: ${observation.publicId}",
+                    observationRecordPrefillId = null,
                 )
                 refreshRecords()
             }.onFailure { throwable ->
@@ -348,6 +358,8 @@ data class PlantariaUiState(
     val records: List<PlantRecord> = emptyList(),
     val searchQuery: String = "",
     val selectedRecordDetail: PlantRecord? = null,
+    val observationRecordPrefillId: String? = null,
+    val observationRecordPrefillVersion: Int = 0,
     val isAuthLoading: Boolean = false,
     val isRecordsLoading: Boolean = false,
     val isRecordDetailLoading: Boolean = false,
