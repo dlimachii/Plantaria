@@ -60,13 +60,14 @@ Decisión operativa:
 
 ## Git y GitHub
 
-Estado actualizado: 2026-04-22 17:23 CEST.
+Estado actualizado: 2026-04-22 17:30 CEST.
 
 - Git está inicializado en la raíz del workspace, rama `main`.
 - Identidad Git local del proyecto: `dlimachii <dlimachi@icloud.com>`.
 - Se generó clave SSH local para GitHub en `~/.ssh/id_ed25519`.
 - Fingerprint de la clave pública: `SHA256:2yuV33Jk6tvBm9eKjUJJ+zacTNU16XsvM/NKv6eZrNM`.
-- Pendiente: añadir la clave pública en GitHub y configurar `origin`.
+- Remoto `origin`: `git@github.com:dlimachii/Plantaria.git`.
+- La rama `main` local sigue a `origin/main`.
 
 ## Estado observado del entorno local en esta sesión
 

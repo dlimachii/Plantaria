@@ -40,7 +40,9 @@
 - Se comprobó que no había `gh`, remoto Git ni clave SSH visible configurada.
 - Se generó una clave SSH ED25519 en `~/.ssh/id_ed25519` con correo `dlimachi@icloud.com`.
 - Fingerprint de la clave pública: `SHA256:2yuV33Jk6tvBm9eKjUJJ+zacTNU16XsvM/NKv6eZrNM`.
-- Queda pendiente añadir la clave pública en GitHub, crear el repositorio remoto y hacer `git push -u origin main`.
+- A las 2026-04-22 17:30 CEST se verificó autenticación SSH con GitHub: `Hi dlimachii! You've successfully authenticated`.
+- Se configuró `origin` como `git@github.com:dlimachii/Plantaria.git`.
+- Se ejecutó `git push -u origin main`; la rama local `main` queda siguiendo a `origin/main`.
 
 ## 2026-04-21
 

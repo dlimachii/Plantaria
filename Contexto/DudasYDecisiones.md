@@ -288,7 +288,7 @@ Evita confundir notas históricas con estado vigente y facilita saber qué docum
 
 Estado: resuelta
 
-Fecha: 2026-04-22 17:12 CEST; actualizado 2026-04-22 17:18 CEST
+Fecha: 2026-04-22 17:12 CEST; actualizado 2026-04-22 17:30 CEST
 
 Decisión:
 
@@ -296,7 +296,9 @@ Decisión:
 - usar rama principal `main`;
 - añadir `.gitignore` raíz para excluir dependencias, builds, caches, entornos locales y secretos;
 - configurar identidad Git local del proyecto como `dlimachii <dlimachi@icloud.com>`;
-- crear commit inicial `6b07fce` con mensaje `Initial Plantaria baseline`.
+- crear commit inicial `6b07fce` con mensaje `Initial Plantaria baseline`;
+- usar GitHub por SSH con remoto `git@github.com:dlimachii/Plantaria.git`;
+- dejar `main` siguiendo a `origin/main`.
 
 Motivo:
 
