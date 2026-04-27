@@ -1,5 +1,25 @@
 # Registro de sesiones
 
+## 2026-04-27 20:03 CEST
+
+### Reordenación visual de commits
+
+- Se ajustó la ficha completa para que la foto principal del reporte use formato 4:3 y `ContentScale.Fit`, evitando recortes en la vista grande.
+- Se ajustaron las tarjetas de observación/commit:
+  - fecha y hora arriba;
+  - foto en formato 4:3 completa;
+  - nota/descripción debajo;
+  - metadatos al final como chips (`Commit #n`, usuario y estado).
+- Se dejó de mostrar el `source_type` crudo (`update`) en la UI de commits porque era información interna poco clara para usuario final.
+- El cambio se limitó a la ficha completa y commits; previews y resultados de búsqueda no se tocaron.
+- Se recompiló e instaló el APK actualizado en móvil físico.
+
+### Validaciones ejecutadas
+
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `git diff --check`: correcto.
+- `adb install -r`: `Success`.
+
 ## 2026-04-27 19:18 CEST
 
 ### Ajuste de ubicación e historial

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,6 +71,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -1027,8 +1029,9 @@ private fun RecordProfileContent(
             fallbackIcon = Icons.Outlined.LocationOn,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
+                .aspectRatio(4f / 3f)
                 .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Fit,
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1136,40 +1139,37 @@ private fun ObservationTimelineCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextChip("#${index + 1}")
-                observation.sourceType?.let { TextChip(it) }
-                observation.author?.handle?.let { TextChip("@$it") }
-            }
+            Text(
+                text = observation.observedAt?.toReadableDateTime() ?: observation.publicId,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
             RemotePlantariaImage(
                 imageUrl = observation.photoUrl,
                 contentDescription = "Foto de observacion",
                 fallbackIcon = Icons.Outlined.LocationOn,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(190.dp)
+                    .aspectRatio(4f / 3f)
                     .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Fit,
             )
-            Text(
-                text = observation.observedAt?.toReadableDateTime() ?: observation.publicId,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            observation.note?.let {
+            if (observation.note.isNullOrBlank()) {
                 Text(
-                    text = it,
+                    text = "Sin descripcion.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    text = observation.note,
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            observation.plantCondition?.let {
-                Text(
-                    text = "Estado observado: $it",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextChip("Commit #${index + 1}")
+                observation.author?.handle?.let { TextChip("@$it") }
+                observation.plantCondition?.let { TextChip("Estado: $it") }
             }
         }
     }
@@ -1245,8 +1245,9 @@ private fun RecordDetailContent(
         fallbackIcon = Icons.Outlined.LocationOn,
         modifier = Modifier
             .fillMaxWidth()
-            .height(190.dp)
+            .aspectRatio(4f / 3f)
             .clip(RoundedCornerShape(8.dp)),
+        contentScale = ContentScale.Fit,
     )
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

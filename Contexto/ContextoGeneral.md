@@ -39,6 +39,7 @@ La metáfora que usa el usuario es la de un "GitHub de plantas", pero funcionalm
 - ajuste de UX del 2026-04-27 18:25 CEST: el mapa vuelve a tener un único buscador, solo por nombres de planta; se retiró el campo visible de zona/coordenadas y el backend dejó de buscar por `public_id` en `q`;
 - pulido de UX del 2026-04-27 18:43 CEST: se quitó `Resumen del mapa`, los resultados se integraron dentro del bloque del buscador con scroll interno y se instaló el APK en móvil físico;
 - ajuste móvil del 2026-04-27 19:18 CEST: al entrar al mapa se usa ubicación cacheada en vez de pedir ubicación actual lenta; la foto original queda como portada fija y el historial excluye la observación inicial automática;
+- pulido visual del 2026-04-27 20:03 CEST: fotos grandes en ficha/commits pasan a marco 4:3 completo y los commits muestran fecha, foto, nota y metadatos sin exponer `source_type=update`;
 - el trabajo actual debe centrarse en estabilización, validación física y documentación de entrega.
 
 ## Objetivo actual
@@ -182,6 +183,12 @@ Revalidación del 2026-04-27 18:43 CEST:
 - APK instalado en móvil físico con `adb install -r`: `Success`.
 
 Revalidación del 2026-04-27 19:18 CEST:
+
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
+- `git diff --check`: correcto;
+- APK instalado en móvil físico con `adb install -r`: `Success`.
+
+Revalidación del 2026-04-27 20:03 CEST:
 
 - `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
 - `git diff --check`: correcto;
