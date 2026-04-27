@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\EventType;
 use App\Enums\ObservationSourceType;
+use App\Enums\PlantCondition;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreObservationRequest;
 use App\Models\AppEvent;
@@ -24,7 +25,7 @@ class ObservationController extends Controller
             'author_user_id' => $request->user()->id,
             'photo_path' => $request->string('photo_path')->value(),
             'note' => $request->input('note'),
-            'plant_condition' => $request->input('plant_condition'),
+            'plant_condition' => $request->input('plant_condition', PlantCondition::UNKNOWN->value),
             'latitude' => $request->input('latitude'),
             'longitude' => $request->input('longitude'),
             'source_type' => ObservationSourceType::UPDATE,

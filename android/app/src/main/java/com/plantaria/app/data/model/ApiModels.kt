@@ -46,6 +46,14 @@ data class RecordAuthor(
     val photoUrl: String?,
 )
 
+data class PlaceSearchResult(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    val type: String?,
+    val category: String?,
+)
+
 data class PlantObservation(
     val publicId: String,
     val photoPath: String?,

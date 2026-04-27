@@ -25,6 +25,7 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
     Route::prefix('moderation')->name('moderation.')->group(function (): void {
         Route::get('/pending', [ModerationPanelController::class, 'pending'])->name('pending');
         Route::get('/records/{publicId}', [ModerationPanelController::class, 'show'])->name('show');
+        Route::post('/records/{publicId}', [ModerationPanelController::class, 'update'])->name('update');
         Route::post('/records/{publicId}/verify', [ModerationPanelController::class, 'verify'])->name('verify');
         Route::post('/records/{publicId}/reject', [ModerationPanelController::class, 'reject'])->name('reject');
     });

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\ModerationController;
 use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FlagController;
+use App\Http\Controllers\Api\GeocodingController;
 use App\Http\Controllers\Api\ObservationController;
 use App\Http\Controllers\Api\PhotoUploadController;
 use App\Http\Controllers\Api\PlantRecordController;
@@ -19,8 +20,9 @@ Route::prefix('auth')->group(function (): void {
 Route::get('/records', [PlantRecordController::class, 'index']);
 Route::get('/records/{publicId}', [PlantRecordController::class, 'show']);
 Route::get('/profiles/{handle}', [ProfileController::class, 'show']);
+Route::get('/geocoding/search', [GeocodingController::class, 'search']);
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 

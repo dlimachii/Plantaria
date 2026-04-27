@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
@@ -70,7 +71,8 @@ class DatabaseSeeder extends Seeder
                 'verified_common_name' => 'Platanero de sombra',
                 'verified_scientific_name' => 'Platanus x hispanica',
                 'description' => 'Ejemplar urbano junto al Parc de la Ciutadella.',
-                'primary_photo_path' => 'demo/platanero-ciutadella.jpg',
+                'primary_photo_path' => 'demo/platanero-ciutadella.png',
+                'photo_color' => [92, 141, 86],
                 'plant_condition' => PlantCondition::GOOD,
                 'verification_status' => VerificationStatus::VERIFIED,
                 'latitude' => 41.3887900,
@@ -84,7 +86,8 @@ class DatabaseSeeder extends Seeder
                 'verified_common_name' => 'Lavanda',
                 'verified_scientific_name' => 'Lavandula angustifolia',
                 'description' => 'Mata aromatica en zona ajardinada de Montjuic.',
-                'primary_photo_path' => 'demo/lavanda-montjuic.jpg',
+                'primary_photo_path' => 'demo/lavanda-montjuic.png',
+                'photo_color' => [126, 91, 160],
                 'plant_condition' => PlantCondition::GOOD,
                 'verification_status' => VerificationStatus::VERIFIED,
                 'latitude' => 41.3635500,
@@ -98,7 +101,8 @@ class DatabaseSeeder extends Seeder
                 'verified_common_name' => 'Romero',
                 'verified_scientific_name' => 'Salvia rosmarinus',
                 'description' => 'Arbusto mediterraneo cerca del Park Guell.',
-                'primary_photo_path' => 'demo/romero-park-guell.jpg',
+                'primary_photo_path' => 'demo/romero-park-guell.png',
+                'photo_color' => [77, 130, 105],
                 'plant_condition' => PlantCondition::REGULAR,
                 'verification_status' => VerificationStatus::VERIFIED,
                 'latitude' => 41.4144900,
@@ -112,7 +116,8 @@ class DatabaseSeeder extends Seeder
                 'verified_common_name' => null,
                 'verified_scientific_name' => null,
                 'description' => 'Registro pendiente de moderacion en Gracia.',
-                'primary_photo_path' => 'demo/bugambilia-gracia.jpg',
+                'primary_photo_path' => 'demo/bugambilia-gracia.png',
+                'photo_color' => [185, 76, 125],
                 'plant_condition' => PlantCondition::UNKNOWN,
                 'verification_status' => VerificationStatus::PENDING,
                 'latitude' => 41.4026900,
@@ -122,6 +127,8 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($demoRecords as $demoRecord) {
+            $this->ensureDemoPhoto($demoRecord['primary_photo_path'], $demoRecord['photo_color']);
+
             $isVerified = $demoRecord['verification_status'] === VerificationStatus::VERIFIED;
             $record = PlantRecord::withTrashed()->firstOrNew([
                 'public_id' => $demoRecord['public_id'],
@@ -164,5 +171,48 @@ class DatabaseSeeder extends Seeder
             $observation->uid ??= (string) Str::uuid();
             $observation->save();
         }
+    }
+
+    private function ensureDemoPhoto(string $path, array $baseColor): void
+    {
+        if (Storage::disk('public')->exists($path)) {
+            return;
+        }
+
+        Storage::disk('public')->put($path, $this->demoPng($baseColor));
+    }
+
+    private function demoPng(array $baseColor): string
+    {
+        $width = 640;
+        $height = 420;
+        $raw = '';
+
+        for ($y = 0; $y < $height; $y++) {
+            $raw .= "\x00";
+
+            for ($x = 0; $x < $width; $x++) {
+                $highlight = $x > 70 && $x < 570 && $y > 70 && $y < 350;
+                $stripe = (($x + $y) % 160) < 80;
+                $factor = $highlight ? ($stripe ? 1.08 : 0.92) : 0.64;
+
+                $raw .= chr((int) min(255, $baseColor[0] * $factor));
+                $raw .= chr((int) min(255, $baseColor[1] * $factor));
+                $raw .= chr((int) min(255, $baseColor[2] * $factor));
+            }
+        }
+
+        return "\x89PNG\r\n\x1a\n"
+            . $this->pngChunk('IHDR', pack('NNCCCCC', $width, $height, 8, 2, 0, 0, 0))
+            . $this->pngChunk('IDAT', gzcompress($raw, 9))
+            . $this->pngChunk('IEND', '');
+    }
+
+    private function pngChunk(string $type, string $data): string
+    {
+        return pack('N', strlen($data))
+            . $type
+            . $data
+            . pack('N', crc32($type . $data));
     }
 }

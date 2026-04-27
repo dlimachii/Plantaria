@@ -34,6 +34,21 @@ Capacidades ya implementadas:
 - panel web de moderación/admin con login de `MOD`/`ADMIN`, dashboard, cola de pendientes, detalle de registro y acciones de verificar/rechazar.
 - actualización 2026-04-22 19:07 CEST: el panel web también incluye listado/filtro de flags y cambio de estado por moderadores/admins.
 - actualización 2026-04-22 19:07 CEST: el panel web también incluye listado/filtro de usuarios y edición básica de rol, estado y datos de ubicación por admins.
+- actualización 2026-04-23 16:33 CEST: el backend añade `/api/geocoding/search` como proxy cacheado a Nominatim para búsquedas de lugar desde Android.
+- actualización 2026-04-23 16:44 CEST: el dashboard web muestra analítica visual de actividad diaria, horas pico, top búsquedas y creadores destacados.
+- actualización 2026-04-23 16:53 CEST: la URL del estilo de mapa Android pasa a configuración de build para poder cambiar de proveedor sin tocar Kotlin.
+- actualización 2026-04-23 16:55 CEST: se añaden scripts operativos para levantar el stack móvil e instalar el APK debug.
+- actualización 2026-04-23 19:10 CEST: el panel web añade búsqueda/filtro de registros y edición avanzada de registros, limitada a `ADMIN`, desde la ficha web.
+- actualización 2026-04-23 19:50 CEST: el flujo Android prepara fotos para móvil real antes de subirlas y el mapa separa búsqueda de registros del foco por zona/coordenadas.
+- actualización 2026-04-24 17:07 CEST: `/api/records` valida filtros de listado y acepta búsqueda por radio con `latitude`, `longitude` y `radius_km`; en PostgreSQL usa PostGIS (`ST_DWithin` y `ST_Distance`) y devuelve `distance_km`.
+- actualización 2026-04-24 17:07 CEST: la documentación visible queda reforzada con `README.md` raíz y `backend/README.md` específico de Plantaria.
+- actualización 2026-04-24 17:26 CEST: se añaden documentos de entrega en `docs/`: guía de demo, checklist de validación móvil y memoria técnica base.
+- actualización 2026-04-24 17:26 CEST: el filtro por radio de `/api/records` queda probado manualmente contra PostgreSQL/PostGIS local levantado con Docker.
+- actualización 2026-04-24 17:29 CEST: se añade `scripts/validate_project.sh` para validar backend, Android, scripts y smoke PostGIS con una sola orden.
+- actualización 2026-04-24 17:34 CEST: `DatabaseSeeder` genera imágenes demo PNG para evitar fotos rotas en una instalación limpia.
+- actualización 2026-04-24 17:34 CEST: se añade `docs/API.md` como referencia práctica de endpoints y se sincroniza la metadata Composer del backend con Plantaria.
+- actualización 2026-04-24 17:41 CEST: se añade middleware `active.user` para bloquear rutas autenticadas a cuentas no activas y tests de autorización API admin.
+- actualización 2026-04-24 17:44 CEST: se añade script de backup `scripts/package_for_onedrive.sh`, guía `docs/BACKUP_ONEDRIVE.md` y se crea un paquete real en OneDrive CEAC.
 
 ### Dominio implementado
 
@@ -77,7 +92,7 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
-Actualización: 2026-04-22 19:07 CEST.
+Actualización: 2026-04-23 19:50 CEST.
 
 Estado actual:
 
@@ -108,18 +123,27 @@ Estado actual:
 - normalización Android de URLs de fotos para sustituir `localhost` por la raíz de la API configurada cuando haga falta;
 - validaciones por campo en login/registro, nuevo reporte y nueva observación.
 - centrado del mapa en ubicación real del usuario si el permiso ya existe o al pulsar el botón `Mi ubicación`;
-- marcador de ubicación del usuario en el mapa.
+- marcador de ubicación del usuario en el mapa con iconografía distinta a la de los registros.
 - botón `Añadir observación` en la ficha de registro para abrir `Acciones` con el ID del registro ya prellenado.
+- sugerencias de lugar y recentrado del mapa desde búsquedas geocodificadas;
+- recentrado directo del mapa al introducir coordenadas `lat, lon`;
+- separación explícita entre búsqueda de registros por planta/ID y foco del mapa por zona o coordenadas.
+- panel web con dashboard visual de analítica sin depender de JavaScript ni librerías de gráficos externas.
+- pantallas Android de acceso, acciones y usuario con estados de ayuda, carga y vacío más claros para demo.
+- estilo de mapa Android configurable por `BuildConfig` en lugar de constante fija.
+- scripts `scripts/start_mobile_stack.sh` y `scripts/install_debug_apk.sh` para reducir el coste operativo de prueba.
+- preparación/compresión de fotos en Android antes de subirlas para tolerar mejor imágenes reales de móvil.
+- preview de pin más compacto, cerrable y sin bloquear los controles principales del mapa.
 
 Validación realizada:
 
 - `./gradlew :app:assembleDebug` ejecutado correctamente;
-- `php artisan test` ejecutado correctamente con 11 tests y 56 assertions;
+- `php artisan test` ejecutado correctamente con 24 tests y 113 assertions;
 - APK debug generado en `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 Pendiente:
 
-- validar el flujo completo en móvil físico.
+- revalidar en móvil físico el APK reconstruido tras estos ajustes de subida y UX.
 
 ## Visión funcional
 
@@ -803,6 +827,45 @@ Estado actualizado 2026-04-22 19:07 CEST:
 - la gestión de flags está disponible para `MOD` y `ADMIN`;
 - la gestión de usuarios está limitada a `ADMIN`.
 
+Estado actualizado 2026-04-23 16:33 CEST:
+
+- Android ya permite buscar lugares contra Nominatim mediante el backend y centrar el mapa sobre la coincidencia elegida;
+- el buscador acepta coordenadas para recentrado rápido sin depender del proveedor externo;
+- la validación funcional fuerte pendiente sigue siendo la prueba en móvil físico.
+
+Estado actualizado 2026-04-23 16:44 CEST:
+
+- el panel web Laravel ya incluye una capa visual de analítica para demo y seguimiento operativo;
+- el foco inmediato del proyecto vuelve a ser la prueba en móvil físico y el cierre de detalles UX.
+
+Estado actualizado 2026-04-23 16:48 CEST:
+
+- el cliente Android ya muestra ayudas rápidas para configurar la URL API en acceso;
+- las pantallas clave enseñan mejor los estados de error, éxito y vacío de cara a la demo en móvil físico.
+
+Estado actualizado 2026-04-23 16:53 CEST:
+
+- la app Android ya puede cambiar de estilo/proveedor de mapa sin modificar el código Kotlin del mapa;
+- la estrategia técnica queda preparada para pasar de un estilo demo a un proveedor vectorial real o a hosting propio.
+
+Estado actualizado 2026-04-23 16:55 CEST:
+
+- el repo ya incluye comandos scriptados para preparar backend+BD y para compilar/instalar el APK por `adb`;
+- la siguiente interacción útil pendiente sigue siendo la prueba real en el teléfono.
+
+Estado actualizado 2026-04-23 19:10 CEST:
+
+- el panel web Laravel ya permite filtrar registros por estado y buscarlos por ID o nombre;
+- la ficha web del registro ya permite edición avanzada de datos para `ADMIN` sin quitar a `MOD` el flujo separado de verificar/rechazar;
+- la validación funcional fuerte pendiente sigue siendo la prueba en móvil físico.
+
+Estado actualizado 2026-04-23 19:50 CEST:
+
+- la primera prueba física parcial confirmó login y navegación básica en Android real;
+- la creación de reportes con foto detectó un cuello de botella real en el límite de subida del servidor y en el tratamiento Android de imágenes grandes;
+- el mapa Android se reestructuró para que buscar registros y mover el foco del mapa sean acciones distintas;
+- la revalidación final pendiente consiste en reinstalar la APK nueva y repetir creación de reporte y observación.
+
 ## Fuera de alcance inicial
 
 Conviene dejar fuera del primer MVP:
@@ -930,7 +993,7 @@ Campos recomendados:
 
 - `uid`;
 - `target_type` (`RECORD`, `OBSERVATION`, `USER`);
-- `target_uid`;
+- `target_id` interno o `target_reference` en la API pública;
 - `created_by_uid`;
 - `reason`;
 - `status`;
@@ -1037,3 +1100,62 @@ Campos mínimos:
 - Laravel permite construir rápido API, autenticación, panel web y modelo relacional sin meter demasiada complejidad.
 - Un solo cliente nativo real en el MVP reduce mucho riesgo para un TFC y sigue siendo perfectamente defendible.
 - Separar `uid` interno y `handle` público evita romper relaciones cuando el usuario cambia su identificador visible.
+
+## Revisión técnica integral
+
+Estado actualizado: 2026-04-24 16:53 CEST.
+
+### Lectura por módulos
+
+Backend:
+
+- Laravel 13 con Sanctum ya cubre autenticación móvil, perfil, registros, observaciones, flags, subida de fotos, moderación, usuarios admin y analítica.
+- El modelo de dominio está bien alineado con la idea original: `PlantRecord` como chincheta/ficha, `Observation` como historial temporal, `ModerationFlag` como denuncia y `AppEvent` como base de analítica.
+- Hay tests feature para registro/login, creación de registros y observaciones, subida de fotos, flags, moderación, panel admin y geocoding.
+- El backend está preparado para PostgreSQL/PostGIS local vía `compose.yaml`, pero los tests automáticos usan sqlite en memoria.
+
+Android:
+
+- El cliente móvil ya no es maqueta: inicia sesión, guarda token y URL API, pinta mapa MapLibre, carga registros reales, muestra preview/ficha, sube fotos, crea reportes y crea observaciones.
+- La navegación real está concentrada en `Mapa`, `Acciones` y `Usuario`, que encaja con la idea móvil del proyecto.
+- El flujo de fotos se endureció para móvil real: Photo Picker, cámara con `TakePicture`/`FileProvider` y compresión antes de subir.
+- La parte más sensible sigue siendo la prueba física final, porque cámara, permisos, GPS, red local y subida de imágenes son justo lo que más cambia entre emulador y teléfono.
+
+Panel web:
+
+- El panel `/admin` ya permite login de `MOD`/`ADMIN`, dashboard, cola de moderación, verificación/rechazo, flags, usuarios y edición avanzada de registros para `ADMIN`.
+- La analítica visual se renderiza en Blade sin depender de JavaScript externo, lo que simplifica la demo.
+- Para el TFC es suficiente como panel administrativo, aunque no sustituye una web pública completa.
+
+Analítica:
+
+- `analytics/usage_report.py` demuestra una vía clara con `Python + pandas + matplotlib + SQLAlchemy`.
+- Actualmente es módulo complementario: lee `app_events` y exporta CSV/gráficas, pero no alimenta todavía el panel en tiempo real.
+
+Infraestructura:
+
+- `compose.yaml` levanta PostgreSQL/PostGIS.
+- `scripts/start_mobile_stack.sh` reduce pasos para móvil: arranca base, migra/seed, asegura `storage:link` y sirve Laravel con límites de subida adecuados.
+- `scripts/install_debug_apk.sh` reduce pasos para compilar e instalar APK debug.
+
+### Aciertos técnicos
+
+- La arquitectura está bien dimensionada para DAM: Android nativo + Laravel + PostGIS + panel admin, sin intentar resolver iOS y web pública a la vez.
+- La separación `uid` interno y `handle` público es correcta y evita deuda futura en relaciones.
+- La decisión de tratar reporte y ficha como el mismo registro con distinto estado de verificación evita duplicar modelos.
+- La moderación existe de verdad en backend y panel, no solo como idea escrita.
+- La app usa datos reales de API y fotos reales; eso sube mucho la calidad defendible del proyecto.
+- La configuración editable de URL API en Android resuelve el problema práctico emulador/móvil físico/WSL.
+
+### Deuda y riesgos
+
+- PostGIS está activado, pero todavía no hay columnas espaciales ni consultas reales por radio/distancia/bounding box; de momento se guardan `latitude` y `longitude` como decimales.
+- El ranking de búsqueda todavía es básico: texto/ID y geocoding separada, sin filtro espacial fuerte.
+- El backend README sigue siendo el genérico de Laravel y debe reemplazarse antes de una entrega seria.
+- No hay CI configurada ni suite Android automatizada; la confianza Android depende de compilación y prueba manual.
+- Falta validar en teléfono físico el flujo reconstruido: galería, cámara, GPS, subida de foto, creación de reporte y observación.
+- El estilo de mapa sigue apuntando por defecto a `demotiles.maplibre.org`, correcto para desarrollo pero no para producción.
+
+### Juicio de estado
+
+El proyecto está fuerte para un TFC si se presenta como MVP centrado en Android. No está terminado como producto público completo, pero sí tiene una base funcional real y coherente. La prioridad técnica no debería ser añadir más pantallas, sino cerrar la prueba física, limpiar documentación visible y endurecer dos o tres puntos de calidad que puedan salir en una defensa: README real, explicación de PostGIS aunque aún no haya consultas espaciales avanzadas y evidencia de validación móvil.

@@ -78,7 +78,7 @@ Estado actualizado: 2026-04-22 17:30 CEST.
 
 ## Panel web Laravel
 
-Estado actualizado: 2026-04-22 19:07 CEST.
+Estado actualizado: 2026-04-23 16:53 CEST.
 
 - Rutas web bajo `/admin`.
 - Login web en `/admin/login` usando handle o email.
@@ -88,6 +88,23 @@ Estado actualizado: 2026-04-22 19:07 CEST.
 - Detalle y acciones de verificar/rechazar en `/admin/moderation/records/{publicId}`.
 - Gestión de flags en `/admin/flags` para roles `mod` y `admin`.
 - Gestión básica de usuarios en `/admin/users` para rol `admin`.
+- Proxy de geocodificación en `/api/geocoding/search` para búsquedas de lugar desde Android.
+- Dashboard visual en `/admin` con métricas y analítica de uso renderizada en servidor.
+- Estilo de mapa Android configurable por `PLANTARIA_MAP_STYLE_URL` en `app/build.gradle.kts`.
+
+## Prueba móvil real
+
+Estado actualizado: 2026-04-23 19:50 CEST.
+
+- `scripts/start_mobile_stack.sh` arranca ahora Laravel con:
+  - `upload_max_filesize=20M`;
+  - `post_max_size=24M`;
+  - `memory_limit=512M`.
+- La ruta backend de subida de fotos acepta hasta `20 MB` para la prueba móvil.
+- La app Android comprime/prepara la imagen antes de subirla para reducir fallos con fotos reales de cámara o galería.
+- La combinación operativa de esta sesión para móvil físico sigue siendo:
+  - `adb reverse tcp:8000 tcp:8000`;
+  - URL API `http://127.0.0.1:8000/api/`.
 
 ## Estado observado del entorno local en esta sesión
 
@@ -198,6 +215,8 @@ Notas:
 - `PLANTARIA_ADMIN_NAME`
 - `PLANTARIA_ADMIN_EMAIL`
 - `PLANTARIA_ADMIN_PASSWORD`
+- `NOMINATIM_BASE_URL`
+- `NOMINATIM_USER_AGENT`
 
 ## Almacenamiento de imágenes
 
@@ -219,6 +238,56 @@ Estado actualizado: 2026-04-22 18:16 CEST.
 - Los tiles públicos de OpenStreetMap no deben asumirse como solución de producción estable ni con SLA.
 - El cliente Android usa de momento `https://demotiles.maplibre.org/style.json`; sirve para desarrollo y demo, pero no debe tratarse como infraestructura final con SLA.
 - Las versiones exactas del cliente Android quedan cerradas en `android/app/build.gradle.kts` y resumidas en este archivo.
+
+## Revalidación local reciente
+
+Estado actualizado: 2026-04-24 17:26 CEST.
+
+Comandos ejecutados:
+
+- `php artisan test` en `backend/`: 24 tests, 113 assertions, todo pasando.
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+- `bash -n scripts/start_mobile_stack.sh`: correcto.
+- `bash -n scripts/install_debug_apk.sh`: correcto.
+- `docker compose ps`: `plantaria-postgis` healthy.
+- `php artisan migrate --seed --no-interaction`: sin migraciones pendientes y seed ejecutado.
+- `curl -H 'Accept: application/json' 'http://127.0.0.1:8001/api/records?latitude=41.3851&longitude=2.1734&radius_km=8&limit=10'`: devuelve registros demo con `distance_km`.
+- `curl -H 'Accept: application/json' 'http://127.0.0.1:8001/api/records?latitude=41.3851'`: devuelve errores JSON de validación para `longitude` y `radius_km`.
+- `./scripts/validate_project.sh`: correcto; ejecuta sintaxis de scripts, `php artisan test`, `./gradlew :app:assembleDebug` y smoke HTTP contra PostGIS si `postgis` está en ejecución.
+
+Notas del script integral:
+
+- `SKIP_ANDROID_BUILD=1` salta la compilación Android.
+- `SKIP_POSTGIS_SMOKE=1` salta la prueba HTTP contra PostgreSQL/PostGIS.
+- `PLANTARIA_VALIDATE_PORT=8010` permite cambiar el puerto temporal de Laravel.
+- `composer validate --no-check-publish`: correcto el 2026-04-24 17:34 CEST tras actualizar `composer.lock` por el cambio de metadata del paquete backend.
+- `php artisan test` sube a 24 tests y 113 assertions el 2026-04-24 17:41 CEST tras añadir middleware de cuenta activa y tests de autorización API admin.
+
+## Backup OneDrive
+
+Estado actualizado: 2026-04-24 17:44 CEST.
+
+- Script: `scripts/package_for_onedrive.sh`.
+- Documentación: `docs/BACKUP_ONEDRIVE.md`.
+- Destino por defecto detectado: `/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups`.
+- Paquete real creado: `plantaria-backup-20260424-174446`.
+- Contiene fuente comprimida, bundle Git, APK debug, `MANIFEST.txt` y `SHA256SUMS`.
+- Validación de hashes ejecutada con `sha256sum -c SHA256SUMS`: correcta.
+- Dump SQL no se incluye por defecto; se activa con `INCLUDE_DB_DUMP=1`.
+
+Nota operativa:
+
+- la primera ejecución de Gradle dentro del sandbox falló porque intentó escribir locks en `/home/aviddrianimachie/.gradle`, que queda fuera del área editable;
+- se reejecutó fuera del sandbox con permiso y la build Android pasó;
+- esto no indica fallo del proyecto, sino una restricción del entorno de ejecución de Codex.
+
+## Limitaciones técnicas observadas
+
+Estado actualizado: 2026-04-24 17:07 CEST.
+
+- Las pruebas backend automáticas usan sqlite en memoria según `phpunit.xml`; son útiles para lógica de aplicación, pero no validan comportamiento específico de PostgreSQL/PostGIS.
+- La extensión PostGIS se activa en migración si el driver es `pgsql`, y `/api/records` ya usa `ST_DWithin`/`ST_Distance` cuando se filtra por radio; las tablas actuales siguen usando latitud/longitud decimal y no columnas espaciales persistentes.
+- El APK debug compila, pero la validación funcional completa sigue dependiendo de teléfono físico.
 
 ## Regla principal
 

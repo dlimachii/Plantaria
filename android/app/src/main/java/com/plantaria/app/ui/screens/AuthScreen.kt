@@ -103,6 +103,11 @@ fun AuthScreen(
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        QuickApiHintCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+        )
 
         Card(
             modifier = Modifier
@@ -292,7 +297,12 @@ fun AuthScreen(
                         contentDescription = null,
                     )
                     Text(
-                        text = if (mode == AuthMode.Login) "Entrar" else "Crear cuenta",
+                        text = when {
+                            !isLoading && mode == AuthMode.Login -> "Entrar"
+                            !isLoading && mode == AuthMode.Register -> "Crear cuenta"
+                            mode == AuthMode.Login -> "Entrando..."
+                            else -> "Creando cuenta..."
+                        },
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
@@ -307,16 +317,65 @@ fun StatusText(
     error: String?,
 ) {
     when {
-        error != null -> Text(
-            text = error,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-        )
-        message != null -> Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = PlantariaColors.Leaf,
-        )
+        error != null -> Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        ) {
+            Text(
+                text = error,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+        message != null -> Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = PlantariaColors.Leaf,
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickApiHintCard(
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Conexión rápida",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Emulador: http://10.0.2.2:8000/api/",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Móvil USB con adb reverse: http://127.0.0.1:8000/api/",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Móvil por Wi-Fi: http://IP_DE_TU_PC:8000/api/",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

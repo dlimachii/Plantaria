@@ -280,13 +280,8 @@ fun ActionsScreen(
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
         )
-        localStatus?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        ActionQuickTipsCard()
+        StatusText(message = message ?: localStatus, error = error)
 
         Card(
             shape = RoundedCornerShape(8.dp),
@@ -356,6 +351,15 @@ fun ActionsScreen(
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
+                Text(
+                    text = if (selectedPhotoUri != null) {
+                        "Foto lista para subir con el reporte."
+                    } else {
+                        "Aún falta una foto para poder crear el reporte."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selectedPhotoUri != null) PlantariaColors.Leaf else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 reportPhotoError?.let {
                     Text(
                         text = it,
@@ -396,7 +400,6 @@ fun ActionsScreen(
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
-                StatusText(message = message, error = error)
                 Button(
                     onClick = {
                         reportSubmitted = true
@@ -419,13 +422,13 @@ fun ActionsScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isCreateRecordLoading,
-                ) {
+                    ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
                         contentDescription = null,
                     )
                     Text(
-                        text = "Crear reporte",
+                        text = if (isCreateRecordLoading) "Creando reporte..." else "Crear reporte",
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
@@ -506,6 +509,15 @@ fun ActionsScreen(
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
+                Text(
+                    text = if (selectedObservationPhotoUri != null) {
+                        "Foto lista para adjuntar a la observación."
+                    } else {
+                        "Aún falta una foto para registrar la observación."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selectedObservationPhotoUri != null) PlantariaColors.Leaf else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 observationPhotoError?.let {
                     Text(
                         text = it,
@@ -574,7 +586,7 @@ fun ActionsScreen(
                         contentDescription = null,
                     )
                     Text(
-                        text = "Añadir observación",
+                        text = if (isCreateObservationLoading) "Guardando observación..." else "Añadir observación",
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
@@ -588,6 +600,30 @@ fun ActionsScreen(
 private enum class LocationTarget {
     Report,
     Observation,
+}
+
+@Composable
+private fun ActionQuickTipsCard() {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Guía rápida",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "1. Haz o selecciona una foto. 2. La app la prepara para móvil real antes de subirla. 3. Usa coordenadas manuales o tu ubicación y envía el reporte u observación.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 private fun Context.hasPlantariaLocationPermission(): Boolean {

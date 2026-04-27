@@ -22,7 +22,7 @@
         .button, button { border: 0; border-radius: 10px; background: var(--leaf); color: white; padding: 10px 14px; font-weight: 750; cursor: pointer; }
         .button.secondary, button.secondary { background: #eef4eb; color: var(--leaf); border: 1px solid #cddcc8; }
         .button.danger, button.danger { background: var(--danger); }
-        input, textarea { width: 100%; border: 1px solid #cdd8c7; border-radius: 10px; padding: 10px 12px; font: inherit; background: #fff; }
+        input, textarea, select { width: 100%; border: 1px solid #cdd8c7; border-radius: 10px; padding: 10px 12px; font: inherit; background: #fff; }
         label { display: grid; gap: 6px; font-weight: 700; margin-bottom: 12px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px 10px; border-bottom: 1px solid #e1e8dc; text-align: left; vertical-align: top; }

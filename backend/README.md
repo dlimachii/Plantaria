@@ -1,58 +1,184 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Plantaria Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Backend Laravel de `Plantaria`, una plataforma colaborativa para registrar plantas geolocalizadas, añadir observaciones temporales y moderar la calidad de los datos.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.3+.
+- Laravel 13.
+- Laravel Sanctum para tokens de la app Android.
+- PostgreSQL/PostGIS como base de datos local principal.
+- Panel web Laravel bajo `/admin`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Arranque local
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Desde la raiz del repositorio:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+docker compose up -d postgis
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+En `backend/`:
 
-## Contributing
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan storage:link
+php artisan serve --host=0.0.0.0 --port=8000
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Para la prueba movil se puede usar directamente:
 
-## Code of Conduct
+```bash
+../scripts/start_mobile_stack.sh
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Ese script levanta PostGIS, ejecuta migraciones y seeders, crea el enlace de storage e inicia Laravel con limites de subida adecuados para fotos reales.
 
-## Security Vulnerabilities
+## Variables principales
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+La configuracion base vive en `.env.example`.
 
-## License
+Variables relevantes:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- `DB_CONNECTION=pgsql`
+- `DB_HOST=127.0.0.1`
+- `DB_DATABASE=plantaria`
+- `DB_USERNAME=plantaria`
+- `DB_PASSWORD=plantaria`
+- `PLANTARIA_ADMIN_HANDLE`
+- `PLANTARIA_ADMIN_EMAIL`
+- `PLANTARIA_ADMIN_PASSWORD`
+- `NOMINATIM_BASE_URL`
+- `NOMINATIM_USER_AGENT`
+
+## Datos demo
+
+El seeder crea una cuenta admin configurable por entorno, una cuenta demo y registros alrededor de Barcelona.
+
+Cuenta demo para Android:
+
+```text
+handle: plantaria_demo
+password: PlantariaDemo1
+```
+
+## API principal
+
+Rutas publicas:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/records`
+- `GET /api/records/{publicId}`
+- `GET /api/profiles/{handle}`
+- `GET /api/geocoding/search`
+
+Rutas autenticadas:
+
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `PATCH /api/profile`
+- `POST /api/uploads/photos`
+- `POST /api/records`
+- `POST /api/records/{publicId}/observations`
+- `POST /api/flags`
+
+La referencia práctica de endpoints está en `../docs/API.md`.
+
+Rutas administrativas API:
+
+- `GET /api/admin/analytics/summary`
+- `GET /api/admin/analytics/trends`
+- `GET /api/admin/analytics/top-searches`
+- `GET /api/admin/moderation/pending`
+- `POST /api/admin/moderation/records/{publicId}/verify`
+- `GET /api/admin/moderation/flags`
+- `POST /api/admin/moderation/flags/{uid}/resolve`
+- `GET /api/admin/users`
+- `GET /api/admin/users/{handle}`
+- `PATCH /api/admin/users/{handle}`
+- `POST /api/admin/users/{handle}/ban`
+- `DELETE /api/admin/users/{handle}`
+
+## Filtros de registros
+
+`GET /api/records` acepta:
+
+- `q`: busqueda por ID publico, nombre provisional, nombre comun validado o nombre cientifico.
+- `status`: `pending`, `verified` o `rejected`.
+- `limit`: entre `1` y `100`.
+- `latitude`, `longitude`, `radius_km`: filtro por radio.
+
+En PostgreSQL usa funciones PostGIS (`ST_DWithin` y `ST_Distance`). En tests sqlite se aplica un fallback matematico para mantener la suite rapida.
+
+Ejemplo:
+
+```text
+GET /api/records?latitude=41.3851&longitude=2.1734&radius_km=5&limit=20
+```
+
+La respuesta incluye `distance_km` cuando se usa el filtro por radio.
+
+## Panel web
+
+Panel disponible en:
+
+```text
+http://127.0.0.1:8000/admin
+```
+
+Incluye:
+
+- login para `MOD` y `ADMIN`;
+- dashboard con analitica visual;
+- cola de moderacion;
+- verificacion y rechazo de registros;
+- gestion de flags;
+- gestion de usuarios para `ADMIN`;
+- edicion avanzada de registros para `ADMIN`.
+
+## Fotos
+
+Las fotos se suben con `POST /api/uploads/photos` y se guardan en `storage/app/public`.
+
+En una instalacion limpia hay que ejecutar:
+
+```bash
+php artisan storage:link
+```
+
+Durante pruebas con movil real, `scripts/start_mobile_stack.sh` arranca PHP con limites de subida ampliados.
+
+## Geocodificacion
+
+`GET /api/geocoding/search` actua como proxy cacheado de Nominatim para que Android no dependa directamente del proveedor.
+
+La configuracion esta en `config/services.php` y se controla con:
+
+```text
+NOMINATIM_BASE_URL
+NOMINATIM_USER_AGENT
+```
+
+## Validacion
+
+```bash
+php artisan test
+```
+
+Desde la raiz del repositorio tambien se puede ejecutar:
+
+```bash
+./scripts/validate_project.sh
+```
+
+Estado reciente:
+
+```text
+24 tests, 113 assertions
+```
+
+La suite cubre auth, subida de fotos, registros, observaciones, flags, geocodificacion, panel web, autorizacion API, seeder demo y filtro geoespacial.

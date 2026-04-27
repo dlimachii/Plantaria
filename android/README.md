@@ -19,13 +19,15 @@ Cliente Android inicial de `Plantaria`.
 
 ## Mapa
 
-La pestaña `Mapa` usa MapLibre Native Android con el estilo:
+La pestaña `Mapa` usa MapLibre Native Android. El estilo por defecto se configura en `BuildConfig`:
 
 ```text
 https://demotiles.maplibre.org/style.json
 ```
 
-Ese estilo necesita conexion a internet y sirve para desarrollo/demo. Los registros de `GET /api/records` se pintan como marcadores sobre el mapa.
+Ese valor vive en `PLANTARIA_MAP_STYLE_URL` dentro de `app/build.gradle.kts`, de modo que cambiar de proveedor no obliga a tocar el código Kotlin.
+
+El estilo demo necesita conexion a internet y sirve para desarrollo/demo. No debe considerarse la solucion final de produccion. Los registros de `GET /api/records` se pintan como marcadores sobre el mapa.
 
 ## API local
 
@@ -38,6 +40,21 @@ http://10.0.2.2:8000/api/
 Esa URL esta pensada para el emulador Android, donde `10.0.2.2` apunta al host que ejecuta Laravel.
 
 La pantalla de acceso permite cambiar la URL de API y la guarda en DataStore.
+
+### Script rapido
+
+Desde la raiz del repo se puede levantar todo lo necesario para la prueba movil con:
+
+```bash
+./scripts/start_mobile_stack.sh
+```
+
+Ese script:
+
+- arranca `postgis`;
+- ejecuta migraciones + seed;
+- asegura `storage:link`;
+- deja Laravel sirviendo en `0.0.0.0:8000`.
 
 ### Emulador Android
 
@@ -124,6 +141,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Si el telefono pregunta por la depuracion USB, aceptar la huella RSA.
 
+Tambien se puede compilar e instalar con:
+
+```bash
+./scripts/install_debug_apk.sh
+```
+
 ## Backend: imagenes
 
 El backend guarda imagenes en el disco `public` de Laravel.
@@ -157,5 +180,4 @@ password: PlantariaDemo1
 
 ## Pendiente
 
-- Centrar el mapa en la ubicacion del usuario cuando haya permiso.
-- Pulir validaciones y estados de error por campo.
+- Elegir y fijar el proveedor/estrategia final de tiles para produccion.

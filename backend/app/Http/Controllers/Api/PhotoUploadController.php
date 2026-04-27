@@ -11,7 +11,7 @@ class PhotoUploadController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'photo' => ['required', 'image', 'max:8192'],
+            'photo' => ['required', 'image', 'max:20480'],
         ]);
 
         $path = $validated['photo']->store('plant-records', 'public');
@@ -24,4 +24,3 @@ class PhotoUploadController extends Controller
         ], 201);
     }
 }
-

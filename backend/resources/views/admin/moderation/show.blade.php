@@ -12,8 +12,11 @@
             <img class="record-photo" src="{{ asset('storage/'.$record->primary_photo_path) }}" alt="Foto principal">
             <h2 style="margin-top: 16px;">Datos del reporte</h2>
             <p><strong>Autor:</strong> {{ $record->author?->handle ? '@'.$record->author->handle : 'sin autor' }}</p>
+            <p><strong>Condicion:</strong> {{ $record->plant_condition?->value ?? 'unknown' }}</p>
             <p><strong>Coordenadas:</strong> {{ number_format((float) $record->latitude, 7) }}, {{ number_format((float) $record->longitude, 7) }}</p>
             <p><strong>Creado:</strong> {{ optional($record->created_at)->format('Y-m-d H:i') }}</p>
+            <p><strong>Ultima observacion:</strong> {{ optional($record->latest_observation_at)->format('Y-m-d H:i') ?: 'Sin datos' }}</p>
+            <p><strong>Validado por:</strong> {{ $record->verifier?->handle ? '@'.$record->verifier->handle : 'sin validar' }}</p>
             <p><strong>Descripcion:</strong><br>{{ $record->description ?: 'Sin descripcion.' }}</p>
 
             <h2>Observaciones</h2>
@@ -64,6 +67,75 @@
                 </label>
                 <button class="danger" type="submit">Rechazar registro</button>
             </form>
+
+            @if (auth()->user()->isAdmin())
+                <hr style="border: 0; border-top: 1px solid #dbe3d5; margin: 20px 0;">
+
+                <h2>Edicion avanzada</h2>
+                <form method="post" action="{{ route('admin.moderation.update', $record->public_id) }}">
+                    @csrf
+                    <label>
+                        Nombre provisional
+                        <input name="provisional_common_name" value="{{ old('provisional_common_name', $record->provisional_common_name) }}" required>
+                        @error('provisional_common_name', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                    </label>
+                    <div class="grid">
+                        <label>
+                            Estado
+                            <select name="verification_status">
+                                @foreach ($statuses as $status)
+                                    <option value="{{ $status->value }}" @selected(old('verification_status', $record->verification_status->value) === $status->value)>{{ $status->value }}</option>
+                                @endforeach
+                            </select>
+                            @error('verification_status', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                        </label>
+                        <label>
+                            Condicion
+                            <select name="plant_condition">
+                                @foreach ($conditions as $condition)
+                                    <option value="{{ $condition->value }}" @selected(old('plant_condition', $record->plant_condition?->value) === $condition->value)>{{ $condition->value }}</option>
+                                @endforeach
+                            </select>
+                            @error('plant_condition', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                        </label>
+                    </div>
+                    <div class="grid">
+                        <label>
+                            Nombre comun validado
+                            <input name="verified_common_name" value="{{ old('verified_common_name', $record->verified_common_name) }}">
+                            @error('verified_common_name', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                        </label>
+                        <label>
+                            Nombre cientifico validado
+                            <input name="verified_scientific_name" value="{{ old('verified_scientific_name', $record->verified_scientific_name) }}">
+                            @error('verified_scientific_name', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                        </label>
+                    </div>
+                    <label>
+                        Ruta de foto principal
+                        <input name="primary_photo_path" value="{{ old('primary_photo_path', $record->primary_photo_path) }}" required>
+                        @error('primary_photo_path', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                    </label>
+                    <div class="grid">
+                        <label>
+                            Latitud
+                            <input name="latitude" type="number" step="0.0000001" value="{{ old('latitude', $record->latitude) }}" required>
+                            @error('latitude', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                        </label>
+                        <label>
+                            Longitud
+                            <input name="longitude" type="number" step="0.0000001" value="{{ old('longitude', $record->longitude) }}" required>
+                            @error('longitude', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                        </label>
+                    </div>
+                    <label>
+                        Descripcion
+                        <textarea name="description" rows="5">{{ old('description', $record->description) }}</textarea>
+                        @error('description', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
+                    </label>
+                    <button type="submit">Guardar cambios</button>
+                </form>
+            @endif
         </aside>
     </div>
 </x-admin.layout>

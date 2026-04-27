@@ -1,5 +1,348 @@
 # Registro de sesiones
 
+## 2026-04-27 18:43 CEST
+
+### Pulido de mapa y guardado de corte beta
+
+- Se quitó el bloque `Resumen del mapa` porque ocupaba espacio sin aportar valor al usuario final.
+- Los resultados de búsqueda pasan a vivir dentro del mismo bloque del buscador.
+- La zona de resultados tiene altura limitada y scroll interno para mostrar de primeras unas 3-4 coincidencias y permitir más resultados si existen.
+- Se mantuvo el buscador único de plantas y los botones de recargar/ubicación.
+- Se recompiló e instaló el APK actualizado en el móvil físico.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=PlantRecordTest`: 5 tests, 32 assertions, todo pasando.
+- `php artisan test`: 26 tests, 122 assertions, todo pasando.
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `git diff --check`: correcto.
+- `adb install -r`: `Success`.
+
+## 2026-04-27 18:25 CEST
+
+### Buscador único de plantas
+
+- Se atendió feedback móvil: no debe haber dos buscadores en el mapa.
+- Android queda con un único campo `Buscar plantas`, orientado a nombre común o científico.
+- Se retiró de la UI el campo `Mover mapa`; la geocodificación/zona deja de ser flujo visible en el mapa para este corte.
+- El backend ajustó `GET /api/records?q=` para buscar solo por nombres de planta:
+  - `provisional_common_name`;
+  - `verified_common_name`;
+  - `verified_scientific_name`.
+- Se quitó la búsqueda por `public_id` del filtro textual para respetar que el buscador sea por nombres.
+- Se añadió test feature que comprueba que buscar por nombre devuelve resultados y buscar por ID público no.
+- Se recompiló e instaló el APK en móvil físico.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=PlantRecordTest`: 5 tests, 32 assertions, todo pasando.
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `adb install -r`: `Success`.
+
+## 2026-04-27 18:19 CEST
+
+### Ajustes tras prueba móvil real
+
+- El usuario validó en móvil físico que:
+  - el login ya funciona;
+  - cargan los pines del mapa;
+  - el marcador de ubicación se distingue visualmente;
+  - la búsqueda por `Lavanda` funciona y se puede limpiar;
+  - la ubicación ya estaba autorizada y el marcador aparece correctamente.
+- Se aclaró que las imágenes demo actuales no son fotos reales de plantas, sino imágenes PNG generadas por el seeder con colores distintos para evitar rutas rotas.
+- Se corrigió el fallo al crear reporte: Android no manda `plant_condition` y el backend estaba enviando `null` explícito a columnas con default `unknown`.
+- Se actualizó backend para usar `PlantCondition::UNKNOWN` por defecto al crear registros y observaciones cuando el cliente no envía condición.
+- Se añadió test feature para crear registro y observación sin `plant_condition`.
+- Se ajustó Android:
+  - panel superior de mapa más compacto;
+  - lista de resultados al buscar registros, con miniatura y distancia cuando hay ubicación de usuario;
+  - ficha de registro en pantalla completa con flecha de vuelta, foto principal, nombres, metadatos e historial de observaciones tipo perfil;
+  - conversión previa de drawables XML a bitmap para iconos de MapLibre mantenida.
+- Se recompiló e instaló el APK actualizado en el teléfono físico con `adb install -r`: `Success`.
+- Se abrió la app desde ADB; no apareció `FATAL EXCEPTION` y el proceso `com.plantaria.app` quedó vivo.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=PlantRecordTest`: 4 tests, 28 assertions, todo pasando.
+- `php artisan test`: 25 tests, 118 assertions, todo pasando.
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `adb logcat -d AndroidRuntime:E '*:S'`: sin crashes tras abrir el APK actualizado.
+
+## 2026-04-27 17:31 CEST
+
+### Corrección de crash Android en móvil físico
+
+- Se reprodujo el cierre de la app en el teléfono físico usando `adb.exe` desde WSL contra el móvil conectado por Windows.
+- `logcat` mostró `FATAL EXCEPTION` en `MapScreen.kt`: `IconFactory.fromResource` no podía decodificar los marcadores `marker_user_location` y `marker_search_focus` porque MapLibre esperaba un `Bitmap`.
+- Se cambió `MapScreen.kt` para convertir los drawables XML de marcador a `Bitmap` mediante `Canvas` antes de crear los iconos de MapLibre.
+- Se recompiló Android con `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- Se instaló el APK corregido en el móvil con `adb install -r`: `Success`.
+- Se relanzó la app desde ADB y no apareció ningún `FATAL EXCEPTION`; `pidof com.plantaria.app` confirmó el proceso vivo.
+- La API local en `127.0.0.1:8000` no estaba arrancada durante esta comprobación, así que login/mapa con datos siguen dependiendo de ejecutar `./scripts/start_mobile_stack.sh` en WSL.
+
+## 2026-04-27 16:23 CEST
+
+### Revalidación local y estado móvil
+
+- Se revisó el contexto obligatorio antes de responder sobre el estado actual del proyecto.
+- Se ejecutó `./scripts/validate_project.sh` con acceso a Docker/Gradle/PHP fuera del sandbox.
+- La validación integral terminó correctamente:
+  - sintaxis de scripts correcta;
+  - `php artisan test`: 24 tests, 113 assertions, todo pasando;
+  - `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
+  - smoke real contra PostgreSQL/PostGIS correcto, incluyendo migración/seed y filtro por radio con `distance_km`.
+- El APK debug actual existe en `android/app/build/outputs/apk/debug/app-debug.apk` y pesa aproximadamente 78 MB.
+- `adb devices` se pudo ejecutar fuera del sandbox, pero no mostró ningún teléfono conectado.
+
+### Lectura de estado
+
+- El proyecto está listo para prueba física en móvil.
+- Todavía no debe considerarse validado definitivamente en móvil porque falta ejecutar `docs/CHECKLIST_VALIDACION_MOVIL.md` en un dispositivo real conectado.
+- El siguiente paso útil con móvil presente es arrancar el stack, instalar el APK, configurar la URL de API y probar login, mapa, búsqueda, GPS, cámara, galería, creación de reporte y observación.
+
+## 2026-04-24 17:44 CEST
+
+### Backup empaquetado en OneDrive
+
+- Se añadió `scripts/package_for_onedrive.sh` para crear paquetes limpios del proyecto.
+- Se añadió `docs/BACKUP_ONEDRIVE.md` con uso, destino, contenido, exclusiones y restauración.
+- Se enlazó la guía desde `README.md`.
+- El script empaqueta fuente sin dependencias/builds/secretos, crea `git bundle`, copia APK debug si existe y genera `MANIFEST.txt` + `SHA256SUMS`.
+- El dump de PostgreSQL queda desactivado por defecto y se puede incluir con `INCLUDE_DB_DUMP=1`.
+- Se añadió el script de backup a la comprobación de sintaxis de `scripts/validate_project.sh`.
+- Se creó un paquete real en OneDrive CEAC:
+  - `/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups/plantaria-backup-20260424-174446`
+- Contenido del paquete:
+  - `plantaria-source-20260424-174446.tar.gz`;
+  - `plantaria-git-20260424-174446.bundle`;
+  - `app-debug-20260424-174446.apk`;
+  - `MANIFEST.txt`;
+  - `SHA256SUMS`.
+
+### Validaciones ejecutadas
+
+- `bash -n scripts/package_for_onedrive.sh`: correcto.
+- `git diff --check`: correcto.
+- `sha256sum -c SHA256SUMS` dentro del paquete OneDrive: correcto.
+
+## 2026-04-24 17:26 CEST
+
+### Preparación de demo y validación real PostGIS
+
+- Se añadió `docs/GUIA_DEMO.md` con guion de demo, preparación del entorno, usuarios demo, recorrido por Android, panel web y resolución de fallos frecuentes.
+- Se añadió `docs/CHECKLIST_VALIDACION_MOVIL.md` para probar el APK en teléfono real con sesión, mapa, búsqueda, ubicación, fotos, creación de reportes, observaciones y panel web.
+- Se añadió `docs/MEMORIA_TFC.md` como base técnica para la memoria/defensa del TFC.
+- Se enlazó la nueva documentación desde `README.md`.
+- Se validó que `plantaria-postgis` está healthy con `docker compose ps`.
+- Se ejecutó `php artisan migrate --seed --no-interaction` contra PostgreSQL local.
+- Se arrancó Laravel temporalmente en `127.0.0.1:8001` y se probó `/api/records?latitude=41.3851&longitude=2.1734&radius_km=8&limit=10`.
+- El endpoint respondió con registros demo y campo `distance_km`, confirmando el camino real de PostGIS.
+- Se probó también una petición inválida con `Accept: application/json` y devolvió errores JSON de validación para `longitude` y `radius_km`.
+- Se cerró el servidor temporal de Laravel tras la prueba.
+- Se añadió `scripts/validate_project.sh` para repetir en una sola orden la validación de scripts, backend, Android y smoke PostGIS.
+- Se actualizó `.gitignore` para ignorar `.plantaria-validate-server.log`, generado temporalmente por el script.
+- Se actualizó `backend/composer.json` para que el nombre, descripción y keywords de Composer reflejen Plantaria y no el skeleton genérico de Laravel.
+- Se actualizó `DatabaseSeeder` para generar imágenes demo PNG en `storage/app/public/demo` y cambiar los registros demo a rutas `.png`.
+- Se añadió `DatabaseSeederTest` para comprobar que el seeder crea registros demo con imagen PNG.
+- Se añadió `docs/API.md` con referencia práctica de endpoints, payloads, filtros y autenticación.
+- Se sincronizó `composer.lock` con `composer update --lock --no-interaction` tras cambiar metadata de `composer.json`.
+- Se añadió middleware `active.user` para bloquear rutas API autenticadas a cuentas no activas.
+- Se añadieron tests para login de usuarios baneados, tokens ya existentes de cuentas baneadas y permisos de API admin por rol.
+
+### Validaciones ejecutadas
+
+- `git diff --check`: correcto.
+- `./scripts/validate_project.sh`: correcto; ejecutó `php artisan test`, `./gradlew :app:assembleDebug` y smoke PostGIS.
+- `php artisan test --filter=DatabaseSeederTest`: correcto.
+- `php artisan test --filter=AuthTest`: correcto.
+- `php artisan test --filter=ApiAuthorizationTest`: correcto.
+- `php artisan migrate --seed --no-interaction`: correcto y generó cuatro PNG demo.
+- `composer validate --no-check-publish`: correcto tras sincronizar el lock.
+- `pgrep -af 'artisan serve'`: sin servidor Laravel temporal activo tras cerrar la prueba.
+
+### Pendiente inmediato
+
+- Repetir la validación física en teléfono real usando `docs/CHECKLIST_VALIDACION_MOVIL.md`.
+
+## 2026-04-24 17:07 CEST
+
+### Cierre documental y mejora geoespacial mínima
+
+- Se añadió `README.md` en la raíz del repositorio con visión del MVP, estructura, arranque rápido, Android, backend, datos demo, validación y pendientes reales.
+- Se sustituyó `backend/README.md`, que seguía siendo el genérico de Laravel, por documentación específica de Plantaria.
+- Se añadieron `NOMINATIM_BASE_URL` y `NOMINATIM_USER_AGENT` a `backend/.env.example`.
+- Se amplió `GET /api/records` con validación de filtros y búsqueda por radio mediante `latitude`, `longitude` y `radius_km`.
+- En PostgreSQL, el filtro por radio usa PostGIS con `ST_DWithin` y `ST_Distance`, y la respuesta incluye `distance_km`.
+- Para tests sqlite se dejó fallback matemático en memoria, evitando convertir sqlite en base objetivo del proyecto.
+- Se añadieron tests feature para el filtro por radio y para validación de filtros del listado.
+- Se pulieron mensajes Android de error de subida de foto para eliminar redacción interna en primera persona.
+
+### Validaciones ejecutadas
+
+- `php artisan test` en `backend/`: 24 tests, 113 assertions, todo pasando.
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+- `bash -n scripts/start_mobile_stack.sh`: correcto.
+- `bash -n scripts/install_debug_apk.sh`: correcto.
+
+### Pendiente inmediato
+
+- Sigue pendiente la revalidación física del APK actual en teléfono real: login, mapa, búsqueda, GPS, cámara, galería, subida de foto, creación de reporte y observación.
+- Si no hay móvil, el siguiente trabajo útil es preparar memoria/capturas y revisar consistencia de entrega, no abrir funcionalidades grandes.
+
+## 2026-04-24 16:53 CEST
+
+### Revisión integral del estado del proyecto
+
+- Se revisó el contexto obligatorio y el contexto específico del proyecto.
+- Se contrastó la documentación con el árbol real de `backend/`, `android/`, `analytics/`, `compose.yaml` y `scripts/`.
+- Se revisaron rutas API/web, modelos, migraciones, controladores, requests, tests backend, pantallas Android, cliente API Android, ViewModel, README Android y scripts operativos.
+- Se confirmó que `Plantaria` ya tiene un MVP móvil-backend-panel avanzado, no solo una estructura inicial.
+- Se dejó documentado que el cuello de botella actual es la revalidación física Android con foto/cámara/GPS/subida tras los últimos arreglos.
+
+### Juicio técnico registrado
+
+- Acierto principal: el alcance está bien enfocado para DAM porque prioriza Android nativo, Laravel, PostGIS, mapa y moderación, sin intentar cerrar iOS y web pública completa a la vez.
+- Acierto de dominio: `PlantRecord` y `Observation` representan bien la metáfora de ficha + historial temporal.
+- Acierto operativo: los scripts de arranque móvil y la URL API editable reducen fricción real para emulador, USB y móvil físico.
+- Riesgo principal: la prueba física final aún no está cerrada para creación de reporte, galería, cámara y observación con foto.
+- Riesgo técnico: PostGIS está activado, pero todavía no se explota con columnas espaciales ni consultas por radio/distancia.
+- Riesgo documental: `backend/README.md` sigue siendo el genérico de Laravel y conviene sustituirlo antes de entrega.
+
+### Validaciones ejecutadas
+
+- `php artisan test` en `backend/`: 16 tests, 88 assertions, todo pasando.
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+- `bash -n scripts/start_mobile_stack.sh`: correcto.
+- `bash -n scripts/install_debug_apk.sh`: correcto.
+
+### Documentación actualizada
+
+- `ContextoGeneral.md` actualizado con corte vigente, juicio de estado, validaciones y riesgos.
+- `ContextoEspecifico.md` actualizado con revisión por módulos, aciertos, deuda y juicio técnico.
+- `DudasYDecisiones.md` actualizado con prioridad de estabilización, estado real de PostGIS y nuevas dudas abiertas.
+- `EntornoYVersiones.md` actualizado con revalidación local y limitaciones técnicas observadas.
+
+### Recomendación para la siguiente sesión
+
+- Si hay móvil físico: arrancar stack, instalar APK, configurar URL API y validar login, mapa, búsqueda, GPS, cámara, galería, creación de reporte y observación.
+- Si no hay móvil físico: limpiar README del backend, preparar material de memoria/capturas y evitar abrir funcionalidades grandes.
+
+## 2026-04-23 19:50 CEST
+
+### Prueba física parcial y correcciones Android
+
+- Se hizo una primera prueba física parcial en Android real por USB con `adb reverse`.
+- El login con `plantaria_demo` quedó validado en dispositivo real.
+- La navegación básica de mapa y ficha quedó visible en móvil real.
+- La prueba detectó que la creación de reportes con foto fallaba antes de llegar a crear el registro.
+- Se identificó como causa principal un límite de subida demasiado bajo en PHP (`upload_max_filesize` de `2M`) para fotos reales de móvil.
+- Se actualizó `scripts/start_mobile_stack.sh` para arrancar Laravel con límites más altos de subida y memoria en la prueba móvil.
+- Se amplió la validación backend de subida de fotos a `20 MB`.
+- Android ahora prepara/comprime imágenes antes de subirlas para tolerar mejor fotos reales de cámara o galería.
+
+### Replanteamiento de UX del mapa
+
+- La pantalla `Mapa` se reestructuró para separar búsqueda de registros por planta/ID de la acción de mover el mapa por zona o coordenadas.
+- Se eliminó el preview automático del primer registro.
+- El preview de pin ahora es más compacto, cerrable y no se superpone con botones flotantes.
+- La ubicación del usuario y el foco de búsqueda pasan a tener iconografía distinta de la de los registros.
+
+### Validaciones ejecutadas
+
+- `php artisan test` en `backend/`: 16 tests, 88 assertions, todo pasando.
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+
+### Pendiente inmediato
+
+- reinstalar la APK reconstruida en el teléfono;
+- repetir creación de reporte con galería y con cámara;
+- repetir creación de observación;
+- cerrar la validación física de la nueva UX del mapa.
+
+## 2026-04-23 19:10 CEST
+
+### Edición avanzada de registros en panel web
+
+- Se amplió la lista web de moderación para permitir filtro por estado y búsqueda por ID público o nombre.
+- Se añadió edición avanzada del registro desde la ficha web con campos de nombre, estado, condición, foto principal, descripción y coordenadas.
+- La edición avanzada quedó restringida a `ADMIN`; `MOD` mantiene el flujo de verificar o rechazar sin permisos de edición total.
+- Se añadió el evento `record_updated` para dejar rastro de ediciones administrativas sobre registros.
+
+### Validaciones ejecutadas
+
+- `php artisan test` en `backend/`: 16 tests, 88 assertions, todo pasando.
+
+## 2026-04-23 16:55 CEST
+
+### Scripts de apoyo para prueba móvil
+
+- Se añadió `scripts/start_mobile_stack.sh` para arrancar PostgreSQL/PostGIS, ejecutar migraciones + seed, asegurar `storage:link` y servir Laravel para el móvil.
+- Se añadió `scripts/install_debug_apk.sh` para compilar e instalar el APK debug por `adb` con una sola orden.
+- Se actualizó `android/README.md` para reflejar la configuración de estilo del mapa y estos nuevos scripts.
+
+### Validaciones ejecutadas
+
+- `bash -n scripts/start_mobile_stack.sh`: correcto.
+- `bash -n scripts/install_debug_apk.sh`: correcto.
+
+## 2026-04-23 16:53 CEST
+
+### Estrategia de tiles y configuración del estilo
+
+- Se movió la URL del estilo del mapa Android a `PLANTARIA_MAP_STYLE_URL` en `app/build.gradle.kts`.
+- El valor por defecto sigue siendo `https://demotiles.maplibre.org/style.json` para desarrollo.
+- Se dejó cerrada en el contexto la estrategia de no depender ni del estilo demo ni de `tile.openstreetmap.org` para producción.
+- Se documentó una salida compatible tanto con proveedor vectorial hospedado como con hosting propio futuro.
+
+### Validaciones ejecutadas
+
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+
+## 2026-04-23 16:48 CEST
+
+### Pulido de estados Android para demo
+
+- Se mejoró la pantalla de acceso con una ayuda rápida para configurar la URL API según emulador, USB o Wi-Fi.
+- Los mensajes de éxito y error pasan a mostrarse como tarjetas más visibles en Android.
+- La pantalla `Acciones` ahora da feedback más claro sobre foto pendiente/lista y sobre operaciones en curso.
+- La pantalla `Usuario` muestra un estado vacío más útil cuando todavía no hay registros visibles desde la API.
+
+### Validaciones ejecutadas
+
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+- La primera ejecución de Gradle dentro del sandbox volvió a fallar por el lock en `~/.gradle`; se reejecutó fuera del sandbox con permiso.
+
+## 2026-04-23 16:44 CEST
+
+### Analítica visual en el panel web
+
+- Se amplió el dashboard web `/admin` para mostrar analítica visual directamente en Blade.
+- El panel ahora enseña actividad diaria de 14 días, actividad por hora, top búsquedas y creadores destacados.
+- Se mantuvo la implementación sin librerías JS de gráficas para simplificar la demo y la estabilidad del panel.
+- Se reforzó el test de panel admin para comprobar que el dashboard renderiza la nueva capa analítica.
+
+### Validaciones ejecutadas
+
+- `php artisan test` en `backend/`: 13 tests, 72 assertions, todo pasando.
+
+## 2026-04-23 16:33 CEST
+
+### Buscador de mapa con geocodificación
+
+- Se añadió en Laravel el endpoint `/api/geocoding/search` como proxy a Nominatim con caché para búsquedas de lugar.
+- Se normalizó la respuesta de geocodificación a `display_name`, `latitude`, `longitude`, `type` y `category`.
+- Se añadió test feature para validar geocodificación, caché y validación de parámetros.
+- Android ahora muestra sugerencias de lugar en la pantalla `Mapa`.
+- El mapa puede recentrarse sobre una sugerencia elegida o sobre coordenadas escritas manualmente.
+- Se añadió soporte básico para consultas combinadas del tipo `planta en lugar`, separando filtro textual de registros y foco de mapa.
+- Se mantuvo pendiente la validación fuerte en móvil físico; esta sesión deja el código listo para hacer esa prueba.
+
+### Validaciones ejecutadas
+
+- `php artisan test` en `backend/`: 13 tests, 70 assertions, todo pasando.
+- `./gradlew :app:assembleDebug` en `android/`: `BUILD SUCCESSFUL`.
+- La primera ejecución de Gradle dentro del sandbox falló por no poder escribir locks en `~/.gradle`; se repitió fuera del sandbox con permiso para completar la validación real.
+
 ## 2026-04-22 17:10 CEST
 
 ### Revisión de coherencia documental

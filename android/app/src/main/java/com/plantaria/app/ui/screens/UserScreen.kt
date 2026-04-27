@@ -72,17 +72,7 @@ fun UserScreen(
         }
         if (records.isEmpty()) {
             item {
-                Card(
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                ) {
-                    Text(
-                        text = "Todavía no hay registros cargados desde la API.",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                EmptyRecordsCard()
             }
         }
     }
@@ -260,4 +250,28 @@ private fun UserRecordRow(record: PlantRecord) {
         }
     }
     Spacer(modifier = Modifier.height(2.dp))
+}
+
+@Composable
+private fun EmptyRecordsCard() {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Sin registros cargados",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Todavía no hay datos visibles desde la API. Si el backend está levantado, crea un reporte en Acciones o recarga el mapa.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }

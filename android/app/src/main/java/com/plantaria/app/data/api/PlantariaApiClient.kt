@@ -3,6 +3,7 @@ package com.plantaria.app.data.api
 import com.plantaria.app.data.model.ApiUser
 import com.plantaria.app.data.model.AuthResult
 import com.plantaria.app.data.model.ObservationResult
+import com.plantaria.app.data.model.PlaceSearchResult
 import com.plantaria.app.data.model.PlantObservation
 import com.plantaria.app.data.model.PlantRecord
 import com.plantaria.app.data.model.RecordAuthor
@@ -112,6 +113,19 @@ class PlantariaApiClient(
         )
 
         return response.getJSONObject("data").toPlantRecord()
+    }
+
+    suspend fun searchPlaces(
+        query: String,
+        limit: Int = 5,
+    ): List<PlaceSearchResult> {
+        val encodedQuery = URLEncoder.encode(query.trim(), Charsets.UTF_8.name())
+        val response = request(
+            path = "geocoding/search?q=$encodedQuery&limit=$limit",
+            method = "GET",
+        )
+
+        return response.getJSONArray("data").toPlaceSearchResults()
     }
 
     suspend fun createRecord(
@@ -295,6 +309,14 @@ class PlantariaApiClient(
         }
     }
 
+    private fun JSONArray.toPlaceSearchResults(): List<PlaceSearchResult> {
+        return buildList {
+            for (index in 0 until length()) {
+                add(getJSONObject(index).toPlaceSearchResult())
+            }
+        }
+    }
+
     private fun JSONObject.toPlantRecord(): PlantRecord {
         val authorJson = optJSONObject("author")
         val primaryPhotoPath = optNullableString("primary_photo_path")
@@ -350,6 +372,16 @@ class PlantariaApiClient(
             displayName = optNullableString("display_name"),
             photoPath = photoPath,
             photoUrl = publicAssetUrl(optNullableString("photo_url"), photoPath),
+        )
+    }
+
+    private fun JSONObject.toPlaceSearchResult(): PlaceSearchResult {
+        return PlaceSearchResult(
+            displayName = optString("display_name"),
+            latitude = optDouble("latitude"),
+            longitude = optDouble("longitude"),
+            type = optNullableString("type"),
+            category = optNullableString("category"),
         )
     }
 
@@ -414,6 +446,16 @@ class PlantariaApiClient(
         return try {
             val json = JSONObject(this)
             json.optString("message").takeIf { it.isNotBlank() }
+                ?: json.optJSONObject("errors")
+                    ?.keys()
+                    ?.asSequence()
+                    ?.mapNotNull { key ->
+                        json.optJSONObject("errors")
+                            ?.optJSONArray(key)
+                            ?.optString(0)
+                            ?.takeIf { it.isNotBlank() }
+                    }
+                    ?.firstOrNull()
                 ?: "Error de API sin mensaje."
         } catch (_: Exception) {
             if (isBlank()) "Error de red sin respuesta." else this

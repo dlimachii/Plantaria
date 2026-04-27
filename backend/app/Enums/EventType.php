@@ -10,6 +10,7 @@ enum EventType: string
     case RECORD_VIEWED = 'record_viewed';
     case PROFILE_VIEWED = 'profile_viewed';
     case RECORD_CREATED = 'record_created';
+    case RECORD_UPDATED = 'record_updated';
     case OBSERVATION_CREATED = 'observation_created';
     case RECORD_VERIFIED = 'record_verified';
     case FLAG_CREATED = 'flag_created';

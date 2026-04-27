@@ -388,6 +388,269 @@ Motivo:
 
 Flags y usuarios son funciones administrativas necesarias para que el panel no se limite a verificar registros. Separarlas por permisos mantiene claro el reparto entre moderación y administración.
 
+### Buscador de mapa con geocodificación
+
+Estado: resuelta
+
+Fecha: 2026-04-23 16:33 CEST
+
+Decisión:
+
+- añadir un endpoint backend `/api/geocoding/search` que actúe como proxy cacheado a Nominatim;
+- mantener la geocodificación fuera del cliente Android directo para no acoplar la app a un tercero ni exponer detalles de integración;
+- ampliar el mapa Android con sugerencias de lugar, foco sobre coincidencias elegidas y recentrado directo por coordenadas;
+- aceptar de forma básica consultas del tipo `planta en lugar`, usando filtro textual de registros y foco del mapa sobre la zona buscada;
+- no introducir todavía filtro espacial real por bounding box o radio hasta modelarlo con más rigor.
+
+Motivo:
+
+La app necesitaba una búsqueda de lugares usable antes de la prueba en móvil físico. El proxy backend permite controlar caché, evolución futura y trazabilidad sin meter una integración frágil o duplicada en Android.
+
+### Analítica visual del panel web
+
+Estado: resuelta
+
+Fecha: 2026-04-23 16:44 CEST
+
+Decisión:
+
+- ampliar el dashboard web existente en `/admin` con analítica visual server-rendered;
+- mostrar actividad diaria, actividad por hora, top búsquedas y creadores destacados dentro del propio dashboard;
+- evitar por ahora dependencias de gráficos en JavaScript y resolverlo con Blade + CSS;
+- mantener la API analítica existente como base reutilizable, pero no obligar al panel a depender de peticiones AJAX para la demo.
+
+Motivo:
+
+La parte analítica ya estaba prevista para el TFC y era el siguiente bloque natural tras cerrar flags, usuarios y geocodificación. Resolverlo en render del servidor simplifica la demo, reduce superficie de fallo y deja un panel más defendible para presentación.
+
+### Estrategia de tiles para producción
+
+Estado: resuelta
+
+Fecha: 2026-04-23 16:53 CEST
+
+Decisión:
+
+- no depender en producción ni del estilo demo de MapLibre ni de `tile.openstreetmap.org`;
+- dejar la URL del estilo del mapa Android en configuración de build para poder cambiar de proveedor sin tocar el código Kotlin;
+- mantener para desarrollo el estilo demo actual como valor por defecto de arranque;
+- orientar el cierre técnico hacia vector tiles compatibles con MapLibre, con dos salidas válidas:
+  - proveedor hospedado compatible con URL de estilo;
+  - hosting propio futuro usando piezas del ecosistema MapLibre como `Martin` y/o `PMTiles`.
+
+Motivo:
+
+Los servidores comunitarios de OSM no son una base fiable ni pensada para este caso de uso de producción, y el estilo demo tampoco debe asumirse como solución final. La configuración por build reduce acoplamiento y deja una transición limpia hacia un proveedor real o hacia infraestructura propia.
+
+### Edición avanzada de registros en el panel web
+
+Estado: resuelta
+
+Fecha: 2026-04-23 19:10 CEST
+
+Decisión:
+
+- ampliar `/admin/moderation/pending` para permitir filtro por estado y búsqueda por ID o nombre;
+- permitir edición avanzada del registro desde su detalle web;
+- limitar esa edición avanzada a `ADMIN`;
+- mantener a `MOD` con flujo de verificación/rechazo, sin permisos de edición total;
+- registrar la edición administrativa del registro como evento `record_updated`.
+
+Motivo:
+
+El siguiente bloque útil sin móvil físico era reforzar la operativa del panel web. Separar edición total y moderación mantiene coherencia con los roles definidos del TFC y deja una vía defendible para corregir datos demo o reales antes de la validación en dispositivo.
+
+### Ajuste del mapa Android y de la subida de fotos para móvil real
+
+Estado: resuelta
+
+Fecha: 2026-04-23 19:50 CEST
+
+Decisión:
+
+- separar en Android la búsqueda de registros por planta/ID de la búsqueda de zona/coordenadas para mover el mapa;
+- eliminar el preview automático del primer registro y dejar previews compactos, cerrables y sin pisar controles principales;
+- diferenciar visualmente la ubicación del usuario frente a los registros y frente al foco de búsqueda;
+- preparar/comprimir fotos en Android antes de subirlas;
+- arrancar Laravel para prueba móvil con límites más altos de `upload_max_filesize` y `post_max_size`;
+- ampliar la validación de subida backend para aceptar fotos de hasta `20 MB` en la ruta de pruebas móvil.
+
+Motivo:
+
+La primera prueba física parcial mostró dos problemas reales: la UX del mapa estaba mezclando intenciones distintas y el flujo de creación fallaba con imágenes de móvil por un límite de subida demasiado bajo. Era mejor corregir ambos puntos antes de seguir iterando sobre funcionalidades nuevas.
+
+### Prioridad tras revisión integral del proyecto
+
+Estado: resuelta
+
+Fecha: 2026-04-24 16:53 CEST
+
+Decisión:
+
+- tratar el proyecto como MVP avanzado en fase de estabilización, no como fase temprana de scaffold;
+- priorizar la revalidación física Android antes de añadir grandes funcionalidades;
+- no abrir iOS, web pública completa, IA de identificación o geoespacial avanzado hasta cerrar el flujo móvil básico;
+- usar el panel web actual como herramienta suficiente de moderación/admin para la primera defensa del TFC;
+- dedicar el siguiente esfuerzo sin móvil a documentación visible, limpieza de README y preparación de memoria/capturas.
+
+Motivo:
+
+El árbol real ya contiene backend, Android, panel, analítica, datos demo y scripts. La deuda que queda no se resuelve añadiendo más alcance, sino demostrando que el flujo principal funciona en teléfono real y que el relato técnico coincide con lo implementado.
+
+### Estado real de PostGIS en el MVP
+
+Estado: resuelta
+
+Fecha: 2026-04-24 16:53 CEST
+
+Decisión:
+
+- mantener PostgreSQL/PostGIS como decisión correcta de base de datos del proyecto;
+- reconocer que el MVP activa PostGIS pero sigue guardando coordenadas como decimales normales;
+- desde el 2026-04-24 17:07 CEST, sí existe una consulta geoespacial real mínima: filtro por radio en `/api/records` con `ST_DWithin` y `ST_Distance` cuando el driver es PostgreSQL;
+- no afirmar en memoria o defensa que ya existen columnas espaciales persistentes o un motor geoespacial avanzado completo;
+- presentar PostGIS como una base real ya usada en un caso concreto y preparada para evolucionar hacia índices/columnas espaciales si hiciera falta.
+
+Motivo:
+
+La elección de PostGIS es coherente con el producto y ahora tiene una prueba funcional acotada. Conviene evitar sobreprometer: el avance es defendible como filtro por radio, no como rediseño geoespacial completo.
+
+### Filtro geoespacial mínimo antes de entrega
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:07 CEST
+
+Decisión:
+
+- implementar en `GET /api/records` los parámetros `latitude`, `longitude` y `radius_km`;
+- usar PostGIS en PostgreSQL mediante `ST_DWithin` para filtrar y `ST_Distance` para devolver `distance_km`;
+- mantener un fallback en memoria para sqlite, solo para que los tests automáticos sigan siendo rápidos y estables;
+- limitar el alcance a una mejora API, sin cambiar todavía la UX móvil ni crear columnas espaciales persistentes.
+
+Motivo:
+
+Refuerza la defensa técnica de PostgreSQL/PostGIS con una mejora pequeña, verificable y sin abrir una migración amplia justo antes de la validación física Android.
+
+### Documentación visible del repositorio
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:07 CEST
+
+Decisión:
+
+- añadir `README.md` en la raíz del repo con visión, estructura, arranque rápido, validación y pendientes reales;
+- sustituir `backend/README.md`, que todavía era el genérico de Laravel, por instrucciones reales del backend de Plantaria;
+- documentar filtros de `/api/records`, panel web, fotos, geocodificación, datos demo y comandos de validación;
+- añadir `NOMINATIM_BASE_URL` y `NOMINATIM_USER_AGENT` a `.env.example`.
+
+Motivo:
+
+La documentación visible del repositorio ya forma parte de la calidad de entrega. Un README genérico de framework desentonaba con el estado real del MVP.
+
+### Documentación de entrega para demo y memoria
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:26 CEST
+
+Decisión:
+
+- añadir `docs/GUIA_DEMO.md` para guiar la demostración del MVP;
+- añadir `docs/CHECKLIST_VALIDACION_MOVIL.md` para cerrar la prueba física del APK con criterios claros;
+- añadir `docs/MEMORIA_TFC.md` como base de redacción técnica para memoria o defensa;
+- enlazar estos documentos desde el README raíz.
+
+Motivo:
+
+El proyecto ya está suficientemente avanzado como para necesitar material de presentación y validación, no solo código. Estos documentos ayudan a defender el alcance real y a no olvidar pruebas críticas en móvil.
+
+### Validación integral repetible
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:29 CEST
+
+Decisión:
+
+- añadir `scripts/validate_project.sh`;
+- ejecutar sintaxis de scripts, tests backend, build Android y smoke HTTP contra PostGIS cuando el servicio `postgis` esté activo;
+- permitir saltar Android o PostGIS con variables de entorno para casos rápidos o máquinas sin Docker/SDK.
+
+Motivo:
+
+El proyecto ya tiene varias piezas y la validación manual se estaba repitiendo. Un script único reduce errores antes de demo o entrega y deja claro qué se considera validación local completa.
+
+### Imágenes demo reproducibles
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:34 CEST
+
+Decisión:
+
+- hacer que `DatabaseSeeder` genere imágenes demo PNG bajo `storage/app/public/demo`;
+- cambiar los registros demo de `.jpg` a `.png`;
+- añadir un test feature que confirma que el seeder crea registros demo con imagen PNG;
+- no versionar los binarios generados en `storage`, porque ya están cubiertos por el seeder.
+
+Motivo:
+
+Las rutas demo existían en base de datos, pero los ficheros no estaban en `storage/app/public`. Generarlos desde el seeder evita fotos rotas en Android y en el panel web después de una instalación limpia.
+
+### Referencia API práctica
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:34 CEST
+
+Decisión:
+
+- añadir `docs/API.md` con endpoints, filtros, ejemplos de request y notas de autenticación;
+- enlazarlo desde README raíz y README del backend.
+
+Motivo:
+
+La API ya tiene suficiente superficie como para necesitar una referencia propia. Ayuda a probar, explicar y defender el backend sin leer controladores.
+
+### Bloqueo de tokens de cuentas no activas
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:41 CEST
+
+Decisión:
+
+- añadir middleware `active.user` a las rutas API autenticadas;
+- mantener el bloqueo de login para usuarios baneados;
+- impedir que tokens ya emitidos de cuentas baneadas o no activas sigan usando la API;
+- cubrir la autorización API admin con tests específicos.
+
+Motivo:
+
+Banear un usuario no debe afectar solo a nuevos inicios de sesión. Si el usuario ya tenía token móvil, el backend debe cortar también el uso posterior de rutas autenticadas.
+
+### Empaquetado para OneDrive
+
+Estado: resuelta
+
+Fecha: 2026-04-24 17:44 CEST
+
+Decisión:
+
+- añadir `scripts/package_for_onedrive.sh`;
+- empaquetar fuente/documentación/scripts/lockfiles sin dependencias, builds ni secretos;
+- crear aparte un `git bundle` para preservar historial comprometido;
+- incluir APK debug si existe;
+- omitir dump de base de datos por defecto, activable con `INCLUDE_DB_DUMP=1`;
+- guardar por defecto en OneDrive CEAC si existe;
+- generar `MANIFEST.txt` y `SHA256SUMS`.
+
+Motivo:
+
+OneDrive no debe sincronizar directamente `vendor`, `node_modules`, builds Android o `.git/` con miles de ficheros. Un paquete comprimido con manifest y checksums es más estable, más limpio y más fácil de restaurar.
+
 ## Dudas abiertas
 
 ### Cliente web público en el TFC
@@ -427,6 +690,29 @@ Pregunta práctica:
 Impacto:
 
 - cambia búsquedas, prioridades y riesgo de ruido o errores.
+
+### Validación final del flujo móvil real
+
+Estado: abierta
+
+Fecha: 2026-04-24 16:53 CEST
+
+Actualización: 2026-04-27 16:23 CEST
+
+Nota:
+
+- la validación local integral volvió a pasar con `./scripts/validate_project.sh`;
+- `adb devices` no mostró ningún teléfono conectado, así que la validación física sigue pendiente;
+- el proyecto está listo para instalar y probar el APK en móvil, pero no cerrado como validado en hardware real.
+
+Pregunta práctica:
+
+- si el APK reconstruido tras los cambios del 2026-04-23 19:50 CEST crea correctamente reportes y observaciones con fotos reales en el teléfono físico.
+
+Impacto:
+
+- es el bloqueo principal para considerar cerrado el MVP Android;
+- afecta directamente a la demo porque combina red local, permisos, cámara, GPS, compresión y subida.
 
 ### Nivel de detalle botánico del primer corte
 

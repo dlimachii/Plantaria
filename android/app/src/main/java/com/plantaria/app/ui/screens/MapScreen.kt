@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
@@ -32,11 +34,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Update
@@ -48,6 +52,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,22 +73,29 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.plantaria.app.BuildConfig
+import com.plantaria.app.R
+import com.plantaria.app.data.model.PlaceSearchResult
 import com.plantaria.app.data.model.PlantObservation
 import com.plantaria.app.data.model.PlantRecord
 import com.plantaria.app.ui.components.RemotePlantariaImage
 import com.plantaria.app.ui.theme.PlantariaColors
 import java.util.Locale
+import kotlin.math.roundToInt
+import org.maplibre.android.annotations.Icon
 import org.maplibre.android.MapLibre
+import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 
-private const val MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json"
+private const val FALLBACK_MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json"
 private const val DEFAULT_LATITUDE = 41.3874
 private const val DEFAULT_LONGITUDE = 2.1686
 private const val USER_LOCATION_MARKER = "__plantaria_user_location__"
+private const val SEARCH_LOCATION_MARKER = "__plantaria_search_location__"
 
 private data class MapRecordPreview(
     val id: String,
@@ -105,18 +117,34 @@ private data class MapUserLocation(
     val coordinatesText: String = String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
 }
 
+private data class MapFocusOverride(
+    val latitude: Double,
+    val longitude: Double,
+)
+
 @Composable
 fun MapScreen(
     contentPadding: PaddingValues,
     records: List<PlantRecord>,
     selectedRecordDetail: PlantRecord?,
-    searchQuery: String,
+    recordSearchQuery: String,
+    locationQuery: String,
+    placeResults: List<PlaceSearchResult>,
+    selectedPlaceResult: PlaceSearchResult?,
     isLoading: Boolean,
+    isPlaceSearchLoading: Boolean,
     isRecordDetailLoading: Boolean,
+    searchMessage: String?,
     error: String?,
     recordDetailError: String?,
-    onSearchQueryChange: (String) -> Unit,
-    onSearchSubmit: () -> Unit,
+    onRecordSearchQueryChange: (String) -> Unit,
+    onRecordSearchSubmit: () -> Unit,
+    onClearRecordSearch: () -> Unit,
+    onLocationQueryChange: (String) -> Unit,
+    onLocationSearchSubmit: () -> Unit,
+    onClearLocationSearch: () -> Unit,
+    onRefreshRecords: () -> Unit,
+    onPlaceSuggestionSelected: (PlaceSearchResult) -> Unit,
     onRecordPreviewClick: (String) -> Unit,
     onCloseRecordDetail: () -> Unit,
     onAddObservationForRecord: (String) -> Unit,
@@ -125,22 +153,44 @@ fun MapScreen(
     val previews = records.map { record -> record.toMapPreview() }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var userLocation by remember { mutableStateOf<MapUserLocation?>(null) }
+    var manualFocusOverride by remember { mutableStateOf<MapFocusOverride?>(null) }
     var locationStatus by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedRecord = selectedId?.let { id -> previews.firstOrNull { it.id == id } }
-    val previewRecord = selectedRecord ?: previews.firstOrNull()
+    val previewRecord = selectedRecord
+    val recordSearchResults = if (recordSearchQuery.isNotBlank()) {
+        previews
+            .sortedWith(
+                compareBy<MapRecordPreview> { preview ->
+                    userLocation?.distanceKmTo(preview) ?: Double.MAX_VALUE
+                }.thenBy { it.name }
+            )
+    } else {
+        emptyList()
+    }
 
-    fun applyUserLocation(location: Location) {
+    fun applyUserLocation(
+        location: Location,
+        centerOnUser: Boolean,
+    ) {
         userLocation = MapUserLocation(
             latitude = location.latitude,
             longitude = location.longitude,
         )
-        locationStatus = "Mapa centrado en tu ubicacion."
+        if (centerOnUser) {
+            manualFocusOverride = MapFocusOverride(
+                latitude = location.latitude,
+                longitude = location.longitude,
+            )
+            locationStatus = "Mapa centrado en tu ubicacion."
+        } else {
+            locationStatus = "Ubicacion disponible para calcular distancias."
+        }
     }
 
-    fun loadUserLocation() {
+    fun loadUserLocation(centerOnUser: Boolean) {
         locationStatus = "Buscando ubicacion..."
         context.fetchPlantariaMapLocation(
-            onLocation = ::applyUserLocation,
+            onLocation = { location -> applyUserLocation(location, centerOnUser) },
             onUnavailable = {
                 locationStatus = "No hay ubicacion disponible. Revisa GPS o permisos."
             },
@@ -154,7 +204,7 @@ fun MapScreen(
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
         if (granted) {
-            loadUserLocation()
+            loadUserLocation(centerOnUser = true)
         } else {
             locationStatus = "Permiso de ubicacion denegado."
         }
@@ -162,7 +212,7 @@ fun MapScreen(
 
     fun requestUserLocation() {
         if (context.hasPlantariaMapLocationPermission()) {
-            loadUserLocation()
+            loadUserLocation(centerOnUser = true)
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -181,7 +231,7 @@ fun MapScreen(
 
     LaunchedEffect(Unit) {
         if (context.hasPlantariaMapLocationPermission()) {
-            loadUserLocation()
+            loadUserLocation(centerOnUser = false)
         }
     }
 
@@ -195,6 +245,8 @@ fun MapScreen(
             records = previews,
             selectedRecord = selectedRecord,
             userLocation = userLocation,
+            manualFocusOverride = manualFocusOverride,
+            searchResult = null,
             onRecordSelected = { selectedId = it },
             modifier = Modifier.fillMaxSize(),
         )
@@ -204,58 +256,70 @@ fun MapScreen(
                 .fillMaxSize()
                 .padding(16.dp),
         ) {
-            MapSearchBar(
-                query = searchQuery,
-                onQueryChange = onSearchQueryChange,
-                onSearchSubmit = onSearchSubmit,
+            MapControlPanel(
+                records = previews,
+                userLocation = userLocation,
+                searchResults = recordSearchResults,
+                recordSearchQuery = recordSearchQuery,
+                onRecordSearchQueryChange = onRecordSearchQueryChange,
+                onRecordSearchSubmit = {
+                    selectedId = null
+                    onRecordSearchSubmit()
+                },
+                onClearRecordSearch = {
+                    selectedId = null
+                    onClearRecordSearch()
+                },
+                onRefreshRecords = onRefreshRecords,
+                onRequestUserLocation = ::requestUserLocation,
+                onRecordSelected = { record ->
+                    selectedId = record.id
+                    manualFocusOverride = null
+                },
+                onOpenRecord = { record ->
+                    selectedId = record.id
+                    onRecordPreviewClick(record.id)
+                },
             )
-            StatusText(message = locationStatus, error = error)
+            StatusText(
+                message = listOfNotNull(searchMessage, locationStatus).joinToString(" ").ifBlank { null },
+                error = error,
+            )
             Spacer(modifier = Modifier.weight(1f))
             when {
-                selectedRecordDetail != null || isRecordDetailLoading || recordDetailError != null -> RecordDetailCard(
-                    record = selectedRecordDetail,
-                    isLoading = isRecordDetailLoading,
-                    error = recordDetailError,
-                    onClose = onCloseRecordDetail,
-                    onAddObservation = onAddObservationForRecord,
-                )
                 isLoading -> LoadingCard("Cargando registros")
+                error != null && previewRecord == null -> MapErrorCard(
+                    error = error,
+                    onRetry = {
+                        selectedId = null
+                        onRefreshRecords()
+                    },
+                    onClearSearch = {
+                        selectedId = null
+                        onClearRecordSearch()
+                    },
+                )
                 previewRecord != null -> RecordPreviewCard(
                     record = previewRecord,
                     userLocation = userLocation,
-                    onClick = { onRecordPreviewClick(previewRecord.id) },
+                    onOpen = { onRecordPreviewClick(previewRecord.id) },
+                    onClose = { selectedId = null },
                 )
-                else -> EmptyMapCard()
+                previews.isEmpty() -> EmptyMapCard(
+                    searchQuery = recordSearchQuery,
+                    onRetry = onRefreshRecords,
+                    onClearSearch = onClearRecordSearch,
+                )
             }
         }
 
-        IconButton(
-            onClick = onSearchSubmit,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 88.dp, end = 16.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Refresh,
-                contentDescription = "Recargar registros",
-                tint = PlantariaColors.Leaf,
-            )
-        }
-
-        IconButton(
-            onClick = ::requestUserLocation,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 144.dp, end = 16.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.MyLocation,
-                contentDescription = "Centrar en mi ubicacion",
-                tint = PlantariaColors.Earth,
+        if (selectedRecordDetail != null || isRecordDetailLoading || recordDetailError != null) {
+            FullScreenRecordDetail(
+                record = selectedRecordDetail,
+                isLoading = isRecordDetailLoading,
+                error = recordDetailError,
+                onBack = onCloseRecordDetail,
+                onAddObservation = onAddObservationForRecord,
             )
         }
     }
@@ -266,6 +330,8 @@ private fun PlantariaMapView(
     records: List<MapRecordPreview>,
     selectedRecord: MapRecordPreview?,
     userLocation: MapUserLocation?,
+    manualFocusOverride: MapFocusOverride?,
+    searchResult: PlaceSearchResult?,
     onRecordSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -273,6 +339,13 @@ private fun PlantariaMapView(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
+    val iconFactory = remember(context) { IconFactory.getInstance(context) }
+    val userLocationIcon = remember(iconFactory, context) {
+        iconFactory.fromDrawableBitmap(context, R.drawable.marker_user_location)
+    }
+    val searchLocationIcon = remember(iconFactory, context) {
+        iconFactory.fromDrawableBitmap(context, R.drawable.marker_search_focus)
+    }
     val mapView = remember(context) {
         MapLibre.getInstance(context.applicationContext)
         MapView(context).apply {
@@ -333,7 +406,7 @@ private fun PlantariaMapView(
                 getMapAsync { map ->
                     mapLibreMap = map
                     map.uiSettings.isCompassEnabled = false
-                    map.setStyle(MAP_STYLE_URL) {
+                    map.setStyle(BuildConfig.PLANTARIA_MAP_STYLE_URL.ifBlank { FALLBACK_MAP_STYLE_URL }) {
                         styleLoaded = true
                     }
                 }
@@ -342,7 +415,7 @@ private fun PlantariaMapView(
         modifier = modifier,
     )
 
-    LaunchedEffect(mapLibreMap, styleLoaded, records, selectedRecord?.id, userLocation) {
+    LaunchedEffect(mapLibreMap, styleLoaded, records, selectedRecord?.id, userLocation, manualFocusOverride, searchResult) {
         val map = mapLibreMap ?: return@LaunchedEffect
         if (!styleLoaded) {
             return@LaunchedEffect
@@ -352,21 +425,48 @@ private fun PlantariaMapView(
             records = records,
             selectedRecord = selectedRecord,
             userLocation = userLocation,
+            manualFocusOverride = manualFocusOverride,
+            searchResult = searchResult,
+            userLocationIcon = userLocationIcon,
+            searchLocationIcon = searchLocationIcon,
             onRecordSelected = onRecordSelected,
         )
     }
+}
+
+private fun IconFactory.fromDrawableBitmap(
+    context: Context,
+    drawableResId: Int,
+): Icon {
+    val drawable = requireNotNull(context.getDrawable(drawableResId)) {
+        "Drawable resource $drawableResId not found"
+    }
+    val fallbackSize = (24 * context.resources.displayMetrics.density).roundToInt()
+    val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: fallbackSize
+    val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: fallbackSize
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+
+    return fromBitmap(bitmap)
 }
 
 private fun MapLibreMap.renderRecords(
     records: List<MapRecordPreview>,
     selectedRecord: MapRecordPreview?,
     userLocation: MapUserLocation?,
+    manualFocusOverride: MapFocusOverride?,
+    searchResult: PlaceSearchResult?,
+    userLocationIcon: org.maplibre.android.annotations.Icon,
+    searchLocationIcon: org.maplibre.android.annotations.Icon,
     onRecordSelected: (String) -> Unit,
 ) {
     clear()
     setOnMarkerClickListener { marker ->
         marker.snippet
-            ?.takeIf { it != USER_LOCATION_MARKER }
+            ?.takeIf { it != USER_LOCATION_MARKER && it != SEARCH_LOCATION_MARKER }
             ?.let(onRecordSelected)
         true
     }
@@ -375,8 +475,19 @@ private fun MapLibreMap.renderRecords(
         addMarker(
             MarkerOptions()
                 .position(location.toLatLng())
-                .title("Tu ubicacion")
+                .title("Tu ubicacion actual")
+                .icon(userLocationIcon)
                 .snippet(USER_LOCATION_MARKER),
+            )
+    }
+
+    searchResult?.let { place ->
+        addMarker(
+            MarkerOptions()
+                .position(place.toLatLng())
+                .title(place.shortLabel())
+                .icon(searchLocationIcon)
+                .snippet(SEARCH_LOCATION_MARKER),
         )
     }
 
@@ -390,10 +501,16 @@ private fun MapLibreMap.renderRecords(
     }
 
     val target = selectedRecord?.toLatLng()
+        ?: manualFocusOverride?.toLatLng()
+        ?: searchResult?.toLatLng()
         ?: userLocation?.toLatLng()
         ?: records.firstOrNull()?.toLatLng()
         ?: LatLng(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
-    val zoom = if (selectedRecord != null || userLocation != null) 14.0 else 11.0
+    val zoom = when {
+        selectedRecord != null || userLocation != null || manualFocusOverride != null -> 14.0
+        searchResult != null -> 13.0
+        else -> 11.0
+    }
     cameraPosition = CameraPosition.Builder()
         .target(target)
         .zoom(zoom)
@@ -401,18 +518,161 @@ private fun MapLibreMap.renderRecords(
 }
 
 @Composable
-private fun MapSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onSearchSubmit: () -> Unit,
+private fun MapControlPanel(
+    records: List<MapRecordPreview>,
+    userLocation: MapUserLocation?,
+    searchResults: List<MapRecordPreview>,
+    recordSearchQuery: String,
+    onRecordSearchQueryChange: (String) -> Unit,
+    onRecordSearchSubmit: () -> Unit,
+    onClearRecordSearch: () -> Unit,
+    onRefreshRecords: () -> Unit,
+    onRequestUserLocation: () -> Unit,
+    onRecordSelected: (MapRecordPreview) -> Unit,
+    onOpenRecord: (MapRecordPreview) -> Unit,
 ) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${records.size} registros",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                IconButton(onClick = onRefreshRecords) {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = "Recargar",
+                    )
+                }
+                IconButton(onClick = onRequestUserLocation) {
+                    Icon(
+                        imageVector = Icons.Outlined.MyLocation,
+                        contentDescription = "Mi ubicacion",
+                    )
+                }
+            }
+            SearchField(
+                label = "Buscar plantas",
+                value = recordSearchQuery,
+                placeholder = "Nombre comun o cientifico",
+                onValueChange = onRecordSearchQueryChange,
+                onSubmit = onRecordSearchSubmit,
+                onClear = onClearRecordSearch,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                userLocation?.let {
+                    TextChip("Tu posicion")
+                }
+            }
+            RecordSearchResultsCard(
+                query = recordSearchQuery,
+                records = searchResults,
+                userLocation = userLocation,
+                onRecordSelected = onRecordSelected,
+                onOpenRecord = onOpenRecord,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecordSearchResultsCard(
+    query: String,
+    records: List<MapRecordPreview>,
+    userLocation: MapUserLocation?,
+    onRecordSelected: (MapRecordPreview) -> Unit,
+    onOpenRecord: (MapRecordPreview) -> Unit,
+) {
+    if (query.isBlank()) {
+        return
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface),
+            .heightIn(max = 250.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = if (records.isEmpty()) "Sin resultados para \"$query\"" else "Resultados para \"$query\"",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        records.forEach { record ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                    .clickable { onRecordSelected(record) }
+                    .padding(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                RemotePlantariaImage(
+                    imageUrl = record.photoUrl,
+                    contentDescription = "Foto de ${record.name}",
+                    fallbackIcon = Icons.Outlined.LocationOn,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = record.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = listOfNotNull(
+                            record.authorHandle?.let { "@$it" },
+                            userLocation?.distanceTextTo(record) ?: record.coordinatesText,
+                        ).joinToString(" · "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                OutlinedButton(onClick = { onOpenRecord(record) }) {
+                    Text(
+                        text = "Abrir",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchField(
+    label: String,
+    value: String,
+    placeholder: String,
+    onValueChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onClear: () -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Outlined.Search,
@@ -420,15 +680,25 @@ private fun MapSearchBar(
             )
         },
         trailingIcon = {
-            IconButton(onClick = onSearchSubmit) {
-                Icon(
-                    imageVector = Icons.Outlined.Search,
-                    contentDescription = "Buscar",
-                )
+            Row {
+                if (value.isNotBlank()) {
+                    IconButton(onClick = onClear) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = "Limpiar",
+                        )
+                    }
+                }
+                IconButton(onClick = onSubmit) {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = "Buscar",
+                    )
+                }
             }
         },
-        placeholder = { Text("Buscar planta, zona o ID") },
-        shape = RoundedCornerShape(24.dp),
+        placeholder = { Text(placeholder) },
+        shape = RoundedCornerShape(16.dp),
         singleLine = true,
     )
 }
@@ -437,87 +707,459 @@ private fun MapSearchBar(
 private fun RecordPreviewCard(
     record: MapRecordPreview,
     userLocation: MapUserLocation?,
-    onClick: () -> Unit,
+    onOpen: () -> Unit,
+    onClose: () -> Unit,
 ) {
     ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            RemotePlantariaImage(
-                imageUrl = record.photoUrl,
-                contentDescription = "Foto de ${record.name}",
-                fallbackIcon = Icons.Outlined.LocationOn,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RemotePlantariaImage(
+                    imageUrl = record.photoUrl,
+                    contentDescription = "Foto de ${record.name}",
+                    fallbackIcon = Icons.Outlined.LocationOn,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = record.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
+                    record.scientificName?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
-                        text = record.id,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                record.scientificName?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = record.coordinatesText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                userLocation?.let {
-                    Text(
-                        text = "Tu ubicacion: ${it.coordinatesText}",
+                        text = record.coordinatesText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    text = "Toca la tarjeta para abrir la ficha",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = PlantariaColors.Leaf,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusChip(record.status)
-                    record.authorHandle?.let {
-                        AssistChip(
-                            onClick = {},
-                            label = { Text("@$it") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.MyLocation,
-                                    contentDescription = null,
-                                )
-                            },
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Cerrar preview",
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusChip(record.status)
+                record.authorHandle?.let {
+                    TextChip("@$it")
+                }
+            }
+            userLocation?.let {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "Tu posicion: ${it.coordinatesText}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onOpen,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Abrir ficha")
+                }
+                OutlinedButton(
+                    onClick = onClose,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Quitar")
+                }
+            }
+            Text(
+                text = record.id,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaceSuggestionsCard(
+    places: List<PlaceSearchResult>,
+    isLoading: Boolean,
+    onPlaceSuggestionSelected: (PlaceSearchResult) -> Unit,
+) {
+    if (!isLoading && places.isEmpty()) {
+        return
+    }
+
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = if (isLoading) "Buscando zona..." else "Coincidencias de zona",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            if (isLoading) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                    Text(
+                        text = "Consultando ubicaciones",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                places.take(5).forEach { place ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onPlaceSuggestionSelected(place) }
+                            .padding(vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = place.shortLabel(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = place.displayName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceFocusCard(
+    place: PlaceSearchResult,
+    userLocation: MapUserLocation?,
+    onClearSearch: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = place.shortLabel(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = place.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = String.format(Locale.US, "%.5f, %.5f", place.latitude, place.longitude),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            userLocation?.let {
+                Text(
+                    text = "Tu ubicacion: ${it.coordinatesText}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            place.type?.let { type ->
+                TextChip("Tipo: $type")
+            }
+            OutlinedButton(
+                onClick = onClearSearch,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.RestartAlt,
+                    contentDescription = null,
+                )
+                Text(
+                    text = "Quitar foco del mapa",
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenRecordDetail(
+    record: PlantRecord?,
+    isLoading: Boolean,
+    error: String?,
+    onBack: () -> Unit,
+    onAddObservation: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Volver al mapa",
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = record?.displayName ?: "Ficha de registro",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                record?.publicId?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        when {
+            isLoading && record == null -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                LoadingCard("Cargando ficha")
+            }
+            error != null -> Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(onClick = onBack) {
+                    Text("Volver")
+                }
+            }
+            record != null -> RecordProfileContent(
+                record = record,
+                onAddObservation = { onAddObservation(record.publicId) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecordProfileContent(
+    record: PlantRecord,
+    onAddObservation: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        RemotePlantariaImage(
+            imageUrl = record.primaryPhotoUrl,
+            contentDescription = "Foto principal de ${record.displayName}",
+            fallbackIcon = Icons.Outlined.LocationOn,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .clip(RoundedCornerShape(8.dp)),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = record.displayName,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            record.verifiedScientificName?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusChip(record.verificationStatus)
+                record.plantCondition?.let { TextChip("Estado: $it") }
+            }
+        }
+
+        ElevatedCard(
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                record.verifiedCommonName?.let { DetailLine(label = "Nombre comun", value = it) }
+                record.verifiedScientificName?.let { DetailLine(label = "Nombre cientifico", value = it) }
+                DetailLine(label = "Nombre provisional", value = record.provisionalCommonName)
+                record.author?.handle?.let { DetailLine(label = "Autor", value = "@$it") }
+                record.createdAt?.let { DetailLine(label = "Creado", value = it.toReadableDateTime()) }
+                DetailLine(
+                    label = "Coordenadas",
+                    value = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude),
+                )
+                record.description?.let { DetailLine(label = "Descripcion", value = it) }
+            }
+        }
+
+        Button(
+            onClick = onAddObservation,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Update,
+                contentDescription = null,
+            )
+            Text(
+                text = "Anadir observacion",
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+
+        Text(
+            text = "Historial de observaciones",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (record.observations.isEmpty()) {
+            EmptyHistoryCard()
+        } else {
+            record.observations.forEachIndexed { index, observation ->
+                ObservationTimelineCard(
+                    observation = observation,
+                    index = index,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyHistoryCard() {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Text(
+            text = "Todavia no hay observaciones cargadas en esta ficha.",
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ObservationTimelineCard(
+    observation: PlantObservation,
+    index: Int,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextChip("#${index + 1}")
+                observation.sourceType?.let { TextChip(it) }
+                observation.author?.handle?.let { TextChip("@$it") }
+            }
+            RemotePlantariaImage(
+                imageUrl = observation.photoUrl,
+                contentDescription = "Foto de observacion",
+                fallbackIcon = Icons.Outlined.LocationOn,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(190.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
+            Text(
+                text = observation.observedAt?.toReadableDateTime() ?: observation.publicId,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            observation.note?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            observation.plantCondition?.let {
+                Text(
+                    text = "Estado observado: $it",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -534,7 +1176,7 @@ private fun RecordDetailCard(
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 560.dp),
+            .heightIn(max = 440.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -732,22 +1374,119 @@ private fun LoadingCard(message: String) {
 }
 
 @Composable
-private fun EmptyMapCard() {
+private fun MapErrorCard(
+    error: String,
+    onRetry: () -> Unit,
+    onClearSearch: () -> Unit,
+) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Text(
-                text = "Sin registros",
+                text = "No se pudo cargar el mapa",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Cuando el backend tenga reportes, apareceran como chinchetas en este mapa.",
+                text = error,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = "Reintentar",
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                OutlinedButton(
+                    onClick = onClearSearch,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.RestartAlt,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = "Limpiar",
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyMapCard(
+    searchQuery: String,
+    onRetry: () -> Unit,
+    onClearSearch: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = if (searchQuery.isBlank()) "Sin registros" else "Sin coincidencias",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = if (searchQuery.isBlank()) {
+                    "Todavia no hay reportes visibles. Cuando existan, apareceran como pins en este mapa."
+                } else {
+                    "No se encontraron registros para \"$searchQuery\". Prueba otra planta, otro ID o limpia el filtro."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = "Recargar",
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                if (searchQuery.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = onClearSearch,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.RestartAlt,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = "Quitar filtro",
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -786,6 +1525,41 @@ private fun MapRecordPreview.toLatLng(): LatLng {
 
 private fun MapUserLocation.toLatLng(): LatLng {
     return LatLng(latitude, longitude)
+}
+
+private fun MapFocusOverride.toLatLng(): LatLng {
+    return LatLng(latitude, longitude)
+}
+
+private fun PlaceSearchResult.toLatLng(): LatLng {
+    return LatLng(latitude, longitude)
+}
+
+private fun PlaceSearchResult.shortLabel(): String {
+    return displayName.substringBefore(',').trim().ifBlank { displayName }
+}
+
+private fun MapUserLocation.distanceKmTo(record: MapRecordPreview): Double {
+    val result = FloatArray(1)
+    Location.distanceBetween(
+        latitude,
+        longitude,
+        record.latitude,
+        record.longitude,
+        result,
+    )
+
+    return result[0] / 1000.0
+}
+
+private fun MapUserLocation.distanceTextTo(record: MapRecordPreview): String {
+    val distanceKm = distanceKmTo(record)
+
+    return if (distanceKm < 1.0) {
+        "${(distanceKm * 1000).roundToInt()} m"
+    } else {
+        String.format(Locale.US, "%.1f km", distanceKm)
+    }
 }
 
 private fun String.toReadableDateTime(): String {

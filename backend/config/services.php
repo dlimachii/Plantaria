@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'nominatim' => [
+        'base_url' => env('NOMINATIM_BASE_URL', 'https://nominatim.openstreetmap.org'),
+        'user_agent' => env('NOMINATIM_USER_AGENT', 'Plantaria/1.0 (local geocoding proxy)'),
+    ],
+
 ];

@@ -16,6 +16,7 @@ Thumbs.db
 
 # Root-level temporary installers
 composer-setup.php
+.plantaria-validate-server.log
 
 # Python analytics
 analytics/.venv/

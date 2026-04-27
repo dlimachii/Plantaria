@@ -20,6 +20,11 @@ android {
             "PLANTARIA_API_BASE_URL",
             "\"http://10.0.2.2:8000/api/\"",
         )
+        buildConfigField(
+            "String",
+            "PLANTARIA_MAP_STYLE_URL",
+            "\"https://demotiles.maplibre.org/style.json\"",
+        )
     }
 
     buildFeatures {
