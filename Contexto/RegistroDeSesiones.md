@@ -1,5 +1,26 @@
 # Registro de sesiones
 
+## 2026-04-27 20:23 CEST
+
+### Metadatos del reporte en ficha
+
+- Se aplicó al bloque de datos del reporte el mismo criterio visual usado en los commits.
+- La ficha completa muestra los datos del reporte en filas etiqueta/valor para:
+  - nombre común;
+  - nombre científico;
+  - nombre provisional;
+  - autor;
+  - fecha de creación;
+  - coordenadas.
+- La descripción queda en una fila propia para permitir varias líneas sin romper el diseño.
+- Se recompiló e instaló el APK actualizado en móvil físico.
+
+### Validaciones ejecutadas
+
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `git diff --check`: correcto.
+- `adb install -r`: `Success`.
+
 ## 2026-04-27 20:14 CEST
 
 ### Metadatos de commit en vertical

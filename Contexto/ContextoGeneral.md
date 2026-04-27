@@ -41,6 +41,7 @@ La metáfora que usa el usuario es la de un "GitHub de plantas", pero funcionalm
 - ajuste móvil del 2026-04-27 19:18 CEST: al entrar al mapa se usa ubicación cacheada en vez de pedir ubicación actual lenta; la foto original queda como portada fija y el historial excluye la observación inicial automática;
 - pulido visual del 2026-04-27 20:03 CEST: fotos grandes en ficha/commits pasan a marco 4:3 completo y los commits muestran fecha, foto, nota y metadatos sin exponer `source_type=update`;
 - pulido visual del 2026-04-27 20:14 CEST: metadatos de cada commit pasan a columna etiqueta/valor para evitar que se estiren en horizontal;
+- pulido visual del 2026-04-27 20:23 CEST: el bloque de datos del reporte en la ficha completa usa filas etiqueta/valor y descripción separada;
 - el trabajo actual debe centrarse en estabilización, validación física y documentación de entrega.
 
 ## Objetivo actual

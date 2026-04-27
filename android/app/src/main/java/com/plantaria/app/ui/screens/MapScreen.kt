@@ -1061,18 +1061,18 @@ private fun RecordProfileContent(
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                record.verifiedCommonName?.let { DetailLine(label = "Nombre comun", value = it) }
-                record.verifiedScientificName?.let { DetailLine(label = "Nombre cientifico", value = it) }
-                DetailLine(label = "Nombre provisional", value = record.provisionalCommonName)
-                record.author?.handle?.let { DetailLine(label = "Autor", value = "@$it") }
-                record.createdAt?.let { DetailLine(label = "Creado", value = it.toReadableDateTime()) }
-                DetailLine(
+                record.verifiedCommonName?.let { MetadataLine(label = "Nombre comun", value = it) }
+                record.verifiedScientificName?.let { MetadataLine(label = "Nombre cientifico", value = it) }
+                MetadataLine(label = "Nombre provisional", value = record.provisionalCommonName)
+                record.author?.handle?.let { MetadataLine(label = "Autor", value = "@$it") }
+                record.createdAt?.let { MetadataLine(label = "Creado", value = it.toReadableDateTime()) }
+                MetadataLine(
                     label = "Coordenadas",
                     value = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude),
                 )
-                record.description?.let { DetailLine(label = "Descripcion", value = it) }
+                record.description?.let { DescriptionLine(label = "Descripcion", value = it) }
             }
         }
 
@@ -1167,12 +1167,12 @@ private fun ObservationTimelineCard(
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                CommitMetaLine(label = "Commit", value = "#${index + 1}")
+                MetadataLine(label = "Commit", value = "#${index + 1}")
                 observation.author?.handle?.let { handle ->
-                    CommitMetaLine(label = "Usuario", value = "@$handle")
+                    MetadataLine(label = "Usuario", value = "@$handle")
                 }
                 observation.plantCondition?.let { condition ->
-                    CommitMetaLine(label = "Estado", value = condition)
+                    MetadataLine(label = "Estado", value = condition)
                 }
             }
         }
@@ -1366,12 +1366,28 @@ private fun DetailLine(label: String, value: String) {
 }
 
 @Composable
-private fun CommitMetaLine(label: String, value: String) {
+private fun MetadataLine(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun DescriptionLine(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
