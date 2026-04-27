@@ -1166,10 +1166,14 @@ private fun ObservationTimelineCard(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextChip("Commit #${index + 1}")
-                observation.author?.handle?.let { TextChip("@$it") }
-                observation.plantCondition?.let { TextChip("Estado: $it") }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                CommitMetaLine(label = "Commit", value = "#${index + 1}")
+                observation.author?.handle?.let { handle ->
+                    CommitMetaLine(label = "Usuario", value = "@$handle")
+                }
+                observation.plantCondition?.let { condition ->
+                    CommitMetaLine(label = "Estado", value = condition)
+                }
             }
         }
     }
@@ -1357,6 +1361,26 @@ private fun DetailLine(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+@Composable
+private fun CommitMetaLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }

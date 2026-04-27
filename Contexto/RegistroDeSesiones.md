@@ -1,5 +1,23 @@
 # Registro de sesiones
 
+## 2026-04-27 20:14 CEST
+
+### Metadatos de commit en vertical
+
+- Se ajustaron los metadatos de cada observación/commit en la ficha completa.
+- Antes se mostraban en horizontal como chips (`Commit`, usuario y estado), lo que podía deformarse visualmente.
+- Ahora se muestran en una columna de tres filas etiqueta/valor:
+  - `Commit`;
+  - `Usuario`;
+  - `Estado`.
+- Se recompiló e instaló el APK actualizado en móvil físico.
+
+### Validaciones ejecutadas
+
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `git diff --check`: correcto.
+- `adb install -r`: `Success`.
+
 ## 2026-04-27 20:03 CEST
 
 ### Reordenación visual de commits
