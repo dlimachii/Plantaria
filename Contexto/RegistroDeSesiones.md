@@ -1,5 +1,23 @@
 # Registro de sesiones
 
+## 2026-04-27 19:18 CEST
+
+### Ajuste de ubicación e historial
+
+- Se ajustó el mapa para no pedir ubicación actual cada vez que se entra.
+- Al abrir el mapa, Android usa solo la última ubicación conocida si existe y no muestra el proceso lento de búsqueda.
+- La búsqueda de ubicación fresca queda reservada al botón `Mi ubicación`.
+- Se ajustó la ficha completa para que la foto original del reporte quede como portada fija.
+- El historial de observaciones deja de mostrar la observación inicial generada automáticamente con el reporte.
+- Los commits/observaciones posteriores se mantienen en orden de más nuevo a más antiguo.
+- Se recompiló e instaló el APK actualizado en móvil físico.
+
+### Validaciones ejecutadas
+
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `git diff --check`: correcto.
+- `adb install -r`: `Success`.
+
 ## 2026-04-27 18:43 CEST
 
 ### Pulido de mapa y guardado de corte beta

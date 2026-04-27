@@ -197,6 +197,16 @@ fun MapScreen(
         )
     }
 
+    fun loadCachedUserLocation() {
+        if (!context.hasPlantariaMapLocationPermission()) {
+            return
+        }
+
+        context.latestKnownPlantariaMapLocation()?.let { location ->
+            applyUserLocation(location, centerOnUser = false)
+        }
+    }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -230,9 +240,7 @@ fun MapScreen(
     }
 
     LaunchedEffect(Unit) {
-        if (context.hasPlantariaMapLocationPermission()) {
-            loadUserLocation(centerOnUser = false)
-        }
+        loadCachedUserLocation()
     }
 
     Box(
@@ -1004,6 +1012,8 @@ private fun RecordProfileContent(
     record: PlantRecord,
     onAddObservation: () -> Unit,
 ) {
+    val historyObservations = record.historyObservations()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1082,10 +1092,10 @@ private fun RecordProfileContent(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
-        if (record.observations.isEmpty()) {
+        if (historyObservations.isEmpty()) {
             EmptyHistoryCard()
         } else {
-            record.observations.forEachIndexed { index, observation ->
+            historyObservations.forEachIndexed { index, observation ->
                 ObservationTimelineCard(
                     observation = observation,
                     index = index,
@@ -1227,6 +1237,8 @@ private fun RecordDetailContent(
     record: PlantRecord,
     onAddObservation: () -> Unit,
 ) {
+    val historyObservations = record.historyObservations()
+
     RemotePlantariaImage(
         imageUrl = record.primaryPhotoUrl,
         contentDescription = "Foto principal de ${record.displayName}",
@@ -1270,18 +1282,18 @@ private fun RecordDetailContent(
     record.latestObservationAt?.let { DetailLine(label = "Ultima observacion", value = it.toReadableDateTime()) }
 
     Text(
-        text = "Observaciones (${record.observations.size})",
+        text = "Observaciones (${historyObservations.size})",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
-    if (record.observations.isEmpty()) {
+    if (historyObservations.isEmpty()) {
         Text(
             text = "Todavia no hay observaciones cargadas en esta ficha.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     } else {
-        record.observations.forEach { observation ->
+        historyObservations.forEach { observation ->
             ObservationRow(observation)
         }
     }
@@ -1539,6 +1551,10 @@ private fun PlaceSearchResult.shortLabel(): String {
     return displayName.substringBefore(',').trim().ifBlank { displayName }
 }
 
+private fun PlantRecord.historyObservations(): List<PlantObservation> {
+    return observations.filter { observation -> observation.sourceType != "initial" }
+}
+
 private fun MapUserLocation.distanceKmTo(record: MapRecordPreview): Double {
     val result = FloatArray(1)
     Location.distanceBetween(
@@ -1569,6 +1585,13 @@ private fun String.toReadableDateTime(): String {
 private fun Context.hasPlantariaMapLocationPermission(): Boolean {
     return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+}
+
+private fun Context.latestKnownPlantariaMapLocation(): Location? {
+    val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+    val allowFineLocation = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    return locationManager.latestKnownPlantariaMapLocation(allowFineLocation)
 }
 
 @SuppressLint("MissingPermission")

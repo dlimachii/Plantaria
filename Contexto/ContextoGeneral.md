@@ -38,6 +38,7 @@ La metáfora que usa el usuario es la de un "GitHub de plantas", pero funcionalm
 - ajustes móviles del 2026-04-27 18:19 CEST: login, pines, ubicación y búsqueda `Lavanda` validados por usuario; se corrigió creación de reporte sin `plant_condition`; Android recibió panel de mapa más compacto, lista de resultados con distancia y ficha completa tipo perfil;
 - ajuste de UX del 2026-04-27 18:25 CEST: el mapa vuelve a tener un único buscador, solo por nombres de planta; se retiró el campo visible de zona/coordenadas y el backend dejó de buscar por `public_id` en `q`;
 - pulido de UX del 2026-04-27 18:43 CEST: se quitó `Resumen del mapa`, los resultados se integraron dentro del bloque del buscador con scroll interno y se instaló el APK en móvil físico;
+- ajuste móvil del 2026-04-27 19:18 CEST: al entrar al mapa se usa ubicación cacheada en vez de pedir ubicación actual lenta; la foto original queda como portada fija y el historial excluye la observación inicial automática;
 - el trabajo actual debe centrarse en estabilización, validación física y documentación de entrega.
 
 ## Objetivo actual
@@ -176,6 +177,12 @@ Revalidación del 2026-04-27 18:25 CEST:
 Revalidación del 2026-04-27 18:43 CEST:
 
 - `php artisan test`: 26 tests, 122 assertions, todo pasando;
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
+- `git diff --check`: correcto;
+- APK instalado en móvil físico con `adb install -r`: `Success`.
+
+Revalidación del 2026-04-27 19:18 CEST:
+
 - `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
 - `git diff --check`: correcto;
 - APK instalado en móvil físico con `adb install -r`: `Success`.
