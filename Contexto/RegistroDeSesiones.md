@@ -1,5 +1,15 @@
 # Registro de sesiones
 
+## 2026-05-04 20:08 CEST
+
+### Sincronización con GitHub
+
+- Se identificó que el último trabajo documentado previo era el ajuste del documento TFG del 2026-05-04 16:54 CEST.
+- Se revisó el estado Git: la rama `mobile-beta-20260427` contenía el trabajo acumulado posterior a `main`, y `main` era ancestro directo.
+- Se añadió a `.gitignore` la exclusión de temporales de Office (`~$*.docx`, `~$*.xlsx`, `~$*.pptx`) para no subir el archivo temporal `DocumentoTFG/~$antaria_TFG_DAM.docx`.
+- Se consolidaron los cambios en el commit `a377e9b` (`Add analytics assistant and TFG documentation`).
+- Se avanzó `main` al mismo commit por fast-forward local y se subieron a GitHub `main` y `mobile-beta-20260427` en `git@github.com:dlimachii/Plantaria.git`.
+
 ## 2026-05-04 16:40 CEST
 
 ### Documento Word profesional para TFG
