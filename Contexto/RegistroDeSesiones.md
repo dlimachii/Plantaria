@@ -1,5 +1,15 @@
 # Registro de sesiones
 
+## 2026-05-04 20:29 CEST
+
+### Limpieza de repositorio e indexación
+
+- Se auditó Git y se confirmó que el commit actual no tenía dependencias ni builds versionados; `git ls-files -ci --exclude-standard` no devolvió archivos.
+- Se identificó basura local ignorada: `backend/vendor/`, `analytics/.venv/`, `android/app/build/`, cachés Gradle/Kotlin/Python, `backend/.env`, sqlite local, logs, ficheros de storage y temporales de Office.
+- Tras la corrección del alcance, `DocumentoTFG/Plantaria_TFG_DAM.docx` queda rastreado en Git como material de referencia para el agente.
+- Se restauró el archivo Laravel `backend/resources/views/welcome.blade.php` y la ruta `/` para no tocar scaffolding que no sea artefacto generado.
+- La limpieza queda centrada en artefactos generados/locales y en reglas auxiliares de ignore/atributos para facilitar indexación.
+
 ## 2026-05-04 20:08 CEST
 
 ### Sincronización con GitHub

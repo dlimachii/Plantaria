@@ -144,6 +144,15 @@ PLANTARIA_ADMIN_PASSWORD
 - `docs/MEMORIA_TFC.md`: base tecnica para memoria o defensa.
 - `docs/API.md`: referencia practica de endpoints.
 - `docs/BACKUP_ONEDRIVE.md`: empaquetado limpio del proyecto para OneDrive.
+- `DocumentoTFG/TFG DAM_DAW.docx`: plantilla original del documento TFG.
+- `DocumentoTFG/Plantaria_TFG_DAM.docx`: documento generado y versionado como referencia para la estructura y contexto del TFG.
+- `scripts/generate_tfg_docx.py`: generador reproducible del DOCX de Plantaria.
+
+Regenerar el documento TFG:
+
+```bash
+python3 scripts/generate_tfg_docx.py
+```
 
 ## Validacion
 

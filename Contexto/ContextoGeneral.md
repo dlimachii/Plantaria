@@ -53,6 +53,7 @@ La metáfora que usa el usuario es la de un "GitHub de plantas", pero funcionalm
 - ajuste documental del 2026-05-04 16:49 CEST: el DOCX incorpora comparativa de plataformas reales del sector, enfoque TFG/MVP no económico, código público/libre y aclaración de valoración económica como coste de ejecución.
 - ajuste documental del 2026-05-04 16:54 CEST: se añadió tabla de costes de ejecución para entrega local, despliegue público pequeño, MVP comunitario con mapas estables y escala mayor.
 - sincronización GitHub del 2026-05-04 20:08 CEST: se consolidó el trabajo acumulado en Git, se actualizó `main` por avance rápido y se subieron `main` y `mobile-beta-20260427` a `origin`; se excluyó de Git el temporal de Word `~$*.docx`.
+- limpieza de repositorio del 2026-05-04 20:29 CEST: se confirma que `DocumentoTFG/Plantaria_TFG_DAM.docx` debe seguir versionado como referencia de estructura y contexto del TFG; la limpieza se limita a artefactos generados/locales como dependencias instaladas, builds, cachés, logs, sqlite local, temporales e IDE.
 - el trabajo actual debe centrarse en estabilización, validación física y documentación de entrega.
 
 ## Objetivo actual

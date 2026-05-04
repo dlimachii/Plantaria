@@ -6,6 +6,11 @@
 Thumbs.db
 .idea/
 .vscode/
+.fleet/
+*.iml
+.classpath
+.project
+.settings/
 *.swp
 *.swo
 ~$*.docx

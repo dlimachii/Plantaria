@@ -2,6 +2,21 @@
 
 ## Decisiones cerradas
 
+### Limpieza de repositorio e indexación
+
+Estado: resuelta el 2026-05-04 20:29 CEST
+
+Decisión:
+
+- no versionar dependencias instaladas, builds, cachés, bases de datos locales, logs, temporales de Office ni archivos IDE;
+- conservar en Git el código fuente, configuraciones reproducibles, lockfiles, scripts, documentación fuente, la plantilla original `DocumentoTFG/TFG DAM_DAW.docx` y el documento `DocumentoTFG/Plantaria_TFG_DAM.docx`;
+- mantener `DocumentoTFG/Plantaria_TFG_DAM.docx` rastreado porque sirve como referencia material para entender la estructura y contexto del TFG;
+- no tocar archivos fuente o scaffolding salvo que sean artefactos realmente generados.
+
+Motivo:
+
+El repositorio debe quedar pequeño y fácil de indexar sin perder materiales de referencia útiles para futuras sesiones del agente.
+
 ### Estructura documental del contexto
 
 Estado: resuelta

@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.docx binary
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+
+DocumentoTFG/** linguist-documentation
+Contexto/** linguist-documentation
+docs/** linguist-documentation
