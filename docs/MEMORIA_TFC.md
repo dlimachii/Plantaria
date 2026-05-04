@@ -66,7 +66,7 @@ Plantaria se divide en cuatro bloques:
 - Android: cliente principal en Kotlin y Jetpack Compose.
 - Backend: API Laravel con Sanctum y panel web Blade.
 - Base de datos: PostgreSQL/PostGIS levantado con Docker Compose.
-- Analitica: modulo Python auxiliar preparado para informes con pandas.
+- Analitica: modulo Python+pandas integrado con el panel mediante snapshots CSV/JSON.
 
 El backend centraliza autenticacion, reglas de dominio, subida de fotos, moderacion y respuestas API. Android consume la API y mantiene una URL configurable para emulador, USB o Wi-Fi.
 
@@ -97,6 +97,13 @@ El registro funciona como la ficha base. La observacion representa el historial 
 - MapLibre Native Android.
 - Nominatim como proveedor de geocodificacion via proxy backend.
 - Python 3 + pandas para analitica auxiliar.
+- Ollama local como asistente opcional del panel administrativo.
+
+## Analitica y asistente
+
+Laravel registra eventos en `app_events` y exporta datasets operativos con `php artisan plantaria:analytics:build`. El script `analytics/build_admin_analytics.py` procesa esos CSV con pandas y genera `storage/app/analytics/output/admin_dashboard.json`, que el panel `/admin` muestra como bloque analitico.
+
+El panel tambien prepara `/admin/assistant`, una pagina solo para `ADMIN` que consulta un modelo local de Ollama usando el snapshot pandas como contexto. Esta parte es opcional y no sustituye las reglas de moderacion ni el backend principal.
 
 ## Uso de PostGIS
 
@@ -121,19 +128,20 @@ Esto demuestra el uso real de la extension sin sobredimensionar el modelo antes 
 Validaciones automatizadas recientes:
 
 ```text
-php artisan test: 24 tests, 113 assertions
+php artisan test: 38 tests, 176 assertions
 ./gradlew :app:assembleDebug: BUILD SUCCESSFUL
 bash -n scripts/start_mobile_stack.sh: correcto
 bash -n scripts/install_debug_apk.sh: correcto
+bash -n scripts/profile_app_performance.sh: correcto
 ```
 
-Tambien se ha validado manualmente contra PostgreSQL/PostGIS local el filtro por radio de `/api/records`.
+Tambien se ha validado contra PostgreSQL/PostGIS local el filtro por radio de `/api/records`, la generacion del snapshot Python+pandas y el perfilado rapido de endpoints criticos de la app.
 
 ## Riesgos y limitaciones
 
 - La validacion completa en telefono fisico sigue siendo el principal bloqueo final.
 - Las pruebas backend automaticas usan sqlite; no sustituyen pruebas manuales contra PostgreSQL/PostGIS.
-- El estilo actual de MapLibre es de desarrollo/demo y debe sustituirse por proveedor final si se publica el producto.
+- El mapa usa MapLibre Native Android con un estilo publico de demo/desarrollo; queda documentado como suficiente para el TFC local, no como infraestructura final de produccion.
 - El modulo Python es auxiliar, no parte del flujo principal.
 
 ## Lineas futuras

@@ -50,6 +50,7 @@
             <a href="{{ route('admin.flags.index') }}">Flags</a>
             @if (auth()->user()->isAdmin())
                 <a href="{{ route('admin.users.index') }}">Usuarios</a>
+                <a href="{{ route('admin.assistant.index') }}">Asistente</a>
             @endif
             <form method="post" action="{{ route('admin.logout') }}">
                 @csrf

@@ -30,6 +30,13 @@
         .coverage { display: grid; gap: 8px; }
         .coverage-track { height: 10px; border-radius: 999px; background: #e1e8dc; overflow: hidden; }
         .coverage-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #a1c56f 0%, #2f6f3e 100%); }
+        .pandas-panel { border: 1px solid #dbe3d5; border-radius: 12px; padding: 14px; background: #fafcf8; }
+        .pandas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+        .pandas-kpi { padding: 12px; border-radius: 12px; background: #fff; border: 1px solid #e1e8dc; }
+        .pandas-kpi strong { display: block; font-size: 1.35rem; color: var(--leaf); }
+        .signal-list { margin: 0; padding-left: 18px; color: #334133; }
+        .code-line { display: inline-block; padding: 8px 10px; border-radius: 8px; background: #1f2a1f; color: #f5f7f1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86rem; }
+        .inline-form { margin: 0; }
         @media (max-width: 920px) { .hero-panel, .analytics-grid { grid-template-columns: 1fr; display: grid; } }
         @media (max-width: 760px) { .bar-chart { gap: 6px; } .hour-chart { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     </style>
@@ -96,6 +103,104 @@
                 <div class="muted">Observaciones hoy</div>
             </div>
         </div>
+
+        <section class="card">
+            <div class="section-head">
+                <div>
+                    <h2>Analitica Python + pandas</h2>
+                    <div class="muted">Datos exportados desde Laravel y calculados fuera del backend transaccional.</div>
+                </div>
+                @if (auth()->user()->isAdmin())
+                    <div class="actions">
+                        <form class="inline-form" method="post" action="{{ route('admin.analytics.rebuild') }}">
+                            @csrf
+                            <button class="secondary" type="submit">Actualizar pandas</button>
+                        </form>
+                        <a class="button secondary" href="{{ route('admin.assistant.index') }}">Preguntar a Ollama</a>
+                    </div>
+                @endif
+            </div>
+
+            @if ($pandasAnalytics['available'] ?? false)
+                @php
+                    $pandasKpis = $pandasAnalytics['kpis'] ?? [];
+                    $sourceCounts = $pandasAnalytics['source_counts'] ?? [];
+                    $riskSignals = $pandasAnalytics['risk_signals'] ?? [];
+                    $pandasTopSearches = $pandasAnalytics['top_searches'] ?? [];
+                @endphp
+
+                <div class="pandas-grid" style="margin-bottom: 14px;">
+                    <div class="pandas-kpi">
+                        <strong>{{ $pandasKpis['events_7d'] ?? 0 }}</strong>
+                        <span class="muted">Eventos en 7 dias</span>
+                    </div>
+                    <div class="pandas-kpi">
+                        <strong>{{ $pandasKpis['reports_7d'] ?? 0 }}</strong>
+                        <span class="muted">Reportes nuevos</span>
+                    </div>
+                    <div class="pandas-kpi">
+                        <strong>{{ $pandasKpis['observations_7d'] ?? 0 }}</strong>
+                        <span class="muted">Commits nuevos</span>
+                    </div>
+                    <div class="pandas-kpi">
+                        <strong>{{ $pandasKpis['verification_rate'] ?? 0 }}%</strong>
+                        <span class="muted">Cobertura revisada</span>
+                    </div>
+                    <div class="pandas-kpi">
+                        <strong>{{ $pandasKpis['open_flags'] ?? 0 }}</strong>
+                        <span class="muted">Flags abiertos</span>
+                    </div>
+                </div>
+
+                <div class="split">
+                    <div class="pandas-panel">
+                        <h3>Senales calculadas</h3>
+                        @if (empty($riskSignals))
+                            <p class="muted">Sin senales destacables en el snapshot actual.</p>
+                        @else
+                            <ul class="signal-list">
+                                @foreach ($riskSignals as $signal)
+                                    <li>{{ $signal }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                    <div class="pandas-panel">
+                        <h3>Dataset exportado</h3>
+                        <p class="muted" style="margin-top: 0;">Generado: {{ \Illuminate\Support\Carbon::parse($pandasAnalytics['generated_at'] ?? now())->format('Y-m-d H:i') }}</p>
+                        <div class="pandas-grid">
+                            <div><strong>{{ $sourceCounts['users'] ?? 0 }}</strong><br><span class="muted">usuarios</span></div>
+                            <div><strong>{{ $sourceCounts['plant_records'] ?? 0 }}</strong><br><span class="muted">registros</span></div>
+                            <div><strong>{{ $sourceCounts['observations'] ?? 0 }}</strong><br><span class="muted">observaciones</span></div>
+                            <div><strong>{{ $sourceCounts['app_events'] ?? 0 }}</strong><br><span class="muted">eventos</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (! empty($pandasTopSearches))
+                    <div class="pandas-panel" style="margin-top: 14px;">
+                        <h3>Busquedas segun pandas</h3>
+                        <table>
+                            <thead><tr><th>Consulta</th><th>Tipo</th><th>Total</th></tr></thead>
+                            <tbody>
+                            @foreach (array_slice($pandasTopSearches, 0, 5) as $search)
+                                <tr>
+                                    <td>{{ $search['search_query'] ?? 'n/a' }}</td>
+                                    <td>{{ $search['search_type'] ?? 'n/a' }}</td>
+                                    <td>{{ $search['total'] ?? 0 }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            @else
+                <div class="pandas-panel">
+                    <p class="muted">{{ $pandasAnalytics['message'] ?? 'No hay snapshot de pandas disponible.' }}</p>
+                    <span class="code-line">php artisan plantaria:analytics:build</span>
+                </div>
+            @endif
+        </section>
 
         <section class="analytics-grid">
             <div class="card chart-card">

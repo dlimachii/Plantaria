@@ -42,6 +42,16 @@ La metáfora que usa el usuario es la de un "GitHub de plantas", pero funcionalm
 - pulido visual del 2026-04-27 20:03 CEST: fotos grandes en ficha/commits pasan a marco 4:3 completo y los commits muestran fecha, foto, nota y metadatos sin exponer `source_type=update`;
 - pulido visual del 2026-04-27 20:14 CEST: metadatos de cada commit pasan a columna etiqueta/valor para evitar que se estiren en horizontal;
 - pulido visual del 2026-04-27 20:23 CEST: el bloque de datos del reporte en la ficha completa usa filas etiqueta/valor y descripción separada;
+- avance panel admin del 2026-04-28 16:10 CEST: los flags web muestran contexto del objetivo denunciado, filtros por tipo/búsqueda y la ficha de moderación enseña flags relacionados del registro y sus observaciones;
+- avance demo/login del 2026-04-28 16:48 CEST: el seeder crea cuentas por rol (`plantaria_user`, `plantaria_mod`, `plantaria_admin`), Android oculta la URL técnica del login, añade splash/logo animado y mueve cierre de sesión a menú de perfil;
+- avance actividad de usuario del 2026-04-28 17:24 CEST: se añade `/api/me/activity` y la pestaña `Usuario` de Android deja de listar registros globales para mostrar solo acciones propias recientes de la cuenta;
+- avance panel/analítica del 2026-04-28 17:37 CEST: el panel web integra snapshot Python+pandas desde CSV exportados por Laravel y prepara asistente local con Ollama para consultas administrativas;
+- ajuste asistente admin del 2026-04-30 16:20 CEST: `/admin/assistant` resuelve primero consultas directas seguras de BBDD para preguntas conocidas, como top de autores de observaciones y plantas verificadas sin nombre científico; pandas queda como contexto extra para preguntas abiertas.
+- analítica local del 2026-04-30 16:20 CEST: se preparó `analytics/.venv`, `.env` local apunta a ese Python y `admin_dashboard.json` quedó generado contra PostgreSQL/PostGIS local.
+- perfilado de rendimiento del 2026-04-30 16:45 CEST: se añadió `scripts/profile_app_performance.sh` para medir endpoints críticos de la app, tamaño del APK y snapshot básico ADB si hay móvil conectado.
+- documentación TFG del 2026-05-04 16:40 CEST: se generó `DocumentoTFG/Plantaria_TFG_DAM.docx` a partir de la plantilla `DocumentoTFG/TFG DAM_DAW.docx`, con índice automático, estructura académica completa y pendientes explícitos para información externa al código.
+- ajuste documental del 2026-05-04 16:49 CEST: el DOCX incorpora comparativa de plataformas reales del sector, enfoque TFG/MVP no económico, código público/libre y aclaración de valoración económica como coste de ejecución.
+- ajuste documental del 2026-05-04 16:54 CEST: se añadió tabla de costes de ejecución para entrega local, despliegue público pequeño, MVP comunitario con mapas estables y escala mayor.
 - el trabajo actual debe centrarse en estabilización, validación física y documentación de entrega.
 
 ## Objetivo actual
@@ -74,13 +84,13 @@ Completar la integración funcional Android:
 - pulir estados visuales y rendimiento real del mapa en hardware físico;
 - validar en móvil físico el buscador de mapa con geocodificación, coordenadas y recentrado;
 - si hace falta, aprovechar el panel web ya ampliado para preparar datos demo y moderación antes de la prueba física;
-- sustituir el estilo demo por el proveedor final configurado cuando se prepare el corte de producción/demo final.
+- mantener documentado el estilo demo de MapLibre para el TFC local; si Plantaria se publica como producto real, sustituirlo por proveedor final de tiles o hosting propio.
 
 ## Estado para próxima sesión
 
-Fecha de corte vigente: 2026-04-27 16:23 CEST.
+Fecha de corte vigente: 2026-04-30 17:08 CEST.
 
-Estado aproximado del MVP Android + backend + panel: 92-94%.
+Estado aproximado del MVP Android + backend + panel: 94-96%.
 
 Lectura honesta del estado:
 
@@ -88,19 +98,19 @@ Lectura honesta del estado:
 - el móvil es ahora el cuello de botella real, no el backend: falta repetir en dispositivo físico el flujo completo tras los arreglos de compresión/subida de fotos;
 - el panel web está suficientemente fuerte para defender moderación y administración en un TFC;
 - el backend está razonablemente cubierto por tests feature para el alcance actual, pero esos tests corren en sqlite y no sustituyen una pasada real completa contra PostgreSQL/PostGIS;
-- `analytics/` existe como módulo Python defendible, pero todavía es auxiliar y no forma parte del flujo principal de producto;
+- `analytics/` existe como módulo Python defendible, con snapshot pandas generado y asistente admin preparado, pero sigue siendo auxiliar y no parte del flujo principal de producto;
 - el proyecto está en un punto bueno para estabilizar y documentar, no para abrir grandes funcionalidades nuevas.
 
 Ya está hecho y validado:
 
 - backend Laravel con Sanctum, PostgreSQL/PostGIS, usuarios, registros, observaciones, flags, moderación básica, analítica API y subida de fotos;
-- tests backend pasando con `php artisan test`: 24 tests, 113 assertions;
+- tests backend pasando con `php artisan test`: 38 tests, 176 assertions;
 - tokens de cuentas no activas bloqueados por middleware en rutas autenticadas;
 - tests de autorización para impedir acceso de `USER`/`MOD` a rutas API reservadas a `ADMIN`;
 - `/api/records` acepta filtro por radio con `latitude`, `longitude` y `radius_km`, usando PostGIS (`ST_DWithin`/`ST_Distance`) en PostgreSQL y devolviendo `distance_km`;
 - proyecto Android compilable con Kotlin + Jetpack Compose;
 - login, registro, token persistido con DataStore y URL de API editable para emulador/móvil físico;
-- mapa real MapLibre Native Android con estilo `https://demotiles.maplibre.org/style.json`;
+- mapa real MapLibre Native Android con estilo demo documentado `https://demotiles.maplibre.org/style.json`;
 - registros reales de `/api/records` pintados como marcadores en el mapa;
 - selector de imagen con Photo Picker;
 - captura directa con cámara usando `TakePicture` y `FileProvider`;
@@ -120,14 +130,21 @@ Ya está hecho y validado:
 - panel web ampliado el 2026-04-22 19:07 CEST con listado, filtros y edición básica de usuarios para `ADMIN`;
 - dashboard web ampliado el 2026-04-23 16:44 CEST con analítica visual de actividad, horas pico, top búsquedas y creadores destacados;
 - panel web ampliado el 2026-04-23 19:10 CEST con búsqueda/filtro de registros y edición avanzada de registros para `ADMIN` desde la ficha web;
+- panel web ampliado el 2026-04-28 16:10 CEST con filtros de flags por tipo/búsqueda, enlaces al objetivo denunciado y bloque de flags relacionados dentro de la ficha de moderación;
 - Android pulido el 2026-04-23 16:48 CEST con ayudas rápidas de conexión y estados de carga/error más visibles para demo;
+- Android pulido el 2026-04-28 16:48 CEST con splash/logo animado, login sin campo visible de URL y cierre de sesión desde menú de perfil;
+- Android/backend pulidos el 2026-04-28 17:24 CEST con actividad propia de usuario en perfil: reportes creados, commits/observaciones propios, flags enviados y acciones de moderación/admin registradas;
+- panel web ampliado el 2026-04-28 17:37 CEST con bloque `Analitica Python + pandas`, comando `plantaria:analytics:build`, export CSV a `storage/app/analytics/input`, JSON calculado en `storage/app/analytics/output/admin_dashboard.json` y página `/admin/assistant` para Ollama;
+- asistente admin ajustado el 2026-04-30 16:20 CEST para contestar consultas directas de BBDD sin requerir snapshot pandas cuando reconoce preguntas acotadas del dominio Plantaria;
 - estrategia de tiles cerrada el 2026-04-23 16:53 CEST: estilo configurable en build, sin depender de `demotiles` ni de `tile.openstreetmap.org` para producción, y con salida futura compatible con hosting vectorial propio;
 - scripts de apoyo añadidos el 2026-04-23 16:55 CEST para levantar stack móvil e instalar el APK debug con menos pasos manuales;
 - script `scripts/validate_project.sh` añadido el 2026-04-24 17:29 CEST para validación integral repetible;
+- script `scripts/profile_app_performance.sh` añadido el 2026-04-30 16:45 CEST para obtener una línea base rápida de rendimiento API/APK/ADB antes de optimizar;
 - Android reajustado el 2026-04-23 19:50 CEST tras prueba física parcial: búsqueda de registros separada del foco por zona, preview compacto y cerrable, marcador de ubicación claramente distinto y flujo de fotos endurecido para móvil real;
 - documentación visible actualizada el 2026-04-24 17:07 CEST con `README.md` raíz y `backend/README.md` específico de Plantaria;
 - documentación de entrega añadida el 2026-04-24 17:26 CEST en `docs/GUIA_DEMO.md`, `docs/CHECKLIST_VALIDACION_MOVIL.md` y `docs/MEMORIA_TFC.md`;
 - referencia API añadida el 2026-04-24 17:34 CEST en `docs/API.md`;
+- cuentas seedables por rol añadidas el 2026-04-28 16:48 CEST: `plantaria_user`, `plantaria_mod` y `plantaria_admin`, además de `plantaria_demo`;
 - documentación de backup OneDrive añadida el 2026-04-24 17:44 CEST en `docs/BACKUP_ONEDRIVE.md`;
 - imágenes demo PNG generadas automáticamente por `DatabaseSeeder`;
 - datos demo seedables y cargados en PostgreSQL local alrededor de Barcelona;
@@ -201,6 +218,51 @@ Revalidación del 2026-04-27 20:14 CEST:
 - `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
 - `git diff --check`: correcto;
 - APK instalado en móvil físico con `adb install -r`: `Success`.
+
+Revalidación del 2026-04-28 16:10 CEST:
+
+- `php artisan test --filter=AdminPanelTest`: 10 tests, 52 assertions, todo pasando;
+- `php artisan test`: 28 tests, 132 assertions, todo pasando;
+- `git diff --check`: correcto.
+
+Revalidación del 2026-04-28 16:48 CEST:
+
+- `php artisan test --filter=DatabaseSeederTest`: 2 tests, 9 assertions, todo pasando;
+- `php artisan test`: 29 tests, 138 assertions, todo pasando;
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
+- `bash -n scripts/install_debug_apk.sh`: correcto;
+- `bash -n scripts/start_mobile_stack.sh`: correcto;
+- `git diff --check`: correcto;
+- `php artisan db:seed --class=DatabaseSeeder --no-interaction`: correcto contra PostgreSQL local tras levantar/verificar `plantaria-postgis`;
+- verificación PostgreSQL local: existen `plantaria_admin` (`admin`), `plantaria_mod` (`mod`), `plantaria_user` (`user`) y `plantaria_demo` (`user`), todos activos;
+- `adb devices`: sin dispositivos conectados tras arrancar ADB.
+
+Revalidación del 2026-04-28 17:24 CEST:
+
+- `php artisan test --filter=UserActivityTest`: 4 tests, 19 assertions, todo pasando;
+- `php artisan test`: 33 tests, 157 assertions, todo pasando;
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`;
+- `git diff --check`: correcto.
+
+Revalidación del 2026-04-28 17:37 CEST:
+
+- `php artisan test --filter=AdminPanelTest`: 14 tests, 63 assertions, todo pasando;
+- `php artisan test`: 37 tests, 168 assertions, todo pasando;
+- `python3 -m py_compile analytics/build_admin_analytics.py`: correcto;
+- `php artisan plantaria:analytics:build --skip-python`: validado dentro de test sqlite; en entorno local directo requiere PostgreSQL activo.
+
+Revalidación del 2026-04-30 16:20 CEST:
+
+- `php artisan test --filter=AdminPanelTest`: 15 tests, 71 assertions, todo pasando;
+- `php artisan test`: 38 tests, 176 assertions, todo pasando;
+- `php artisan plantaria:analytics:build`: correcto contra PostgreSQL/PostGIS local usando `analytics/.venv`;
+- `git diff --check`: correcto.
+
+Revalidación del 2026-04-30 16:45 CEST:
+
+- `PLANTARIA_PROFILE_RUNS=3 PLANTARIA_PROFILE_PORT=8021 ./scripts/profile_app_performance.sh`: correcto contra Laravel temporal y PostgreSQL/PostGIS local;
+- resultados base: mapa 16.7 ms, radio PostGIS 66.8 ms, búsqueda `Lavanda` 21.2 ms, ficha completa 24.2 ms, login demo 212.8 ms, actividad usuario 22.6 ms, APK debug 77.9 MiB;
+- `bash -n scripts/validate_project.sh && bash -n scripts/profile_app_performance.sh && git diff --check`: correcto.
 
 Primera prueba física parcial del 2026-04-23 19:50 CEST:
 

@@ -47,25 +47,17 @@ class AnalyticsController extends Controller
         $from = now()->subDays($days - 1)->startOfDay();
 
         $dailyActivity = AppEvent::query()
-            ->selectRaw("DATE(occurred_at) as day, COUNT(*) as total_events, COUNT(DISTINCT user_id) as active_users")
+            ->selectRaw('DATE(occurred_at) as day, COUNT(*) as total_events, COUNT(DISTINCT user_id) as active_users')
             ->where('occurred_at', '>=', $from)
             ->groupBy('day')
             ->orderBy('day')
             ->get();
 
         $hourlyActivity = AppEvent::query()
-            ->selectRaw("strftime('%H', occurred_at) as hour, COUNT(*) as total_events")
+            ->selectRaw($this->hourExpression().' as hour, COUNT(*) as total_events')
             ->groupBy('hour')
             ->orderBy('hour')
             ->get();
-
-        if (DB::getDriverName() === 'pgsql') {
-            $hourlyActivity = AppEvent::query()
-                ->selectRaw("TO_CHAR(occurred_at, 'HH24') as hour, COUNT(*) as total_events")
-                ->groupBy('hour')
-                ->orderBy('hour')
-                ->get();
-        }
 
         return response()->json([
             'daily_activity' => $dailyActivity,
@@ -100,6 +92,13 @@ class AnalyticsController extends Controller
             'top_searches' => $topSearches,
             'top_creators' => $topCreators,
         ]);
+    }
+
+    private function hourExpression(): string
+    {
+        return DB::getDriverName() === 'pgsql'
+            ? "TO_CHAR(occurred_at, 'HH24')"
+            : "strftime('%H', occurred_at)";
     }
 
     private function ensureAdmin(): void

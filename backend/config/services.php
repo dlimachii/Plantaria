@@ -40,4 +40,13 @@ return [
         'user_agent' => env('NOMINATIM_USER_AGENT', 'Plantaria/1.0 (local geocoding proxy)'),
     ],
 
+    'plantaria_analytics' => [
+        'python_bin' => env('PLANTARIA_ANALYTICS_PYTHON', 'python3'),
+    ],
+
+    'ollama' => [
+        'base_url' => env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
+        'model' => env('OLLAMA_MODEL', 'llama3.2:1b'),
+    ],
+
 ];

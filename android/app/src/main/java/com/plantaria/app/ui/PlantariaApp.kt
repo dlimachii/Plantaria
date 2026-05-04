@@ -1,5 +1,6 @@
 package com.plantaria.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,9 +16,14 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -28,37 +34,74 @@ import com.plantaria.app.ui.screens.ActionsScreen
 import com.plantaria.app.ui.screens.AuthScreen
 import com.plantaria.app.ui.screens.MapScreen
 import com.plantaria.app.ui.screens.UserScreen
+import com.plantaria.app.ui.components.PlantariaAnimatedLogo
+import com.plantaria.app.ui.state.PlantariaUiState
 import com.plantaria.app.ui.state.PlantariaViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun PlantariaApp(
     viewModel: PlantariaViewModel = viewModel(),
 ) {
     val uiState = viewModel.uiState
+    var introFinished by rememberSaveable { mutableStateOf(false) }
 
-    if (!uiState.authChecked) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        }
+    LaunchedEffect(Unit) {
+        delay(2300)
+        introFinished = true
+    }
+
+    if (!introFinished || !uiState.authChecked) {
+        PlantariaSplashScreen(
+            showProgress = !uiState.authChecked && introFinished,
+        )
         return
     }
 
     if (!uiState.session.isAuthenticated) {
         AuthScreen(
-            apiBaseUrl = uiState.session.apiBaseUrl,
             isLoading = uiState.isAuthLoading,
             message = uiState.message,
             error = uiState.error,
-            onApiBaseUrlChange = viewModel::updateApiBaseUrl,
             onLogin = viewModel::login,
             onRegister = viewModel::register,
         )
         return
     }
 
+    AuthenticatedPlantariaApp(
+        uiState = uiState,
+        viewModel = viewModel,
+    )
+}
+
+@Composable
+private fun PlantariaSplashScreen(
+    showProgress: Boolean,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center,
+    ) {
+        PlantariaAnimatedLogo()
+        if (showProgress) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 48.dp),
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthenticatedPlantariaApp(
+    uiState: PlantariaUiState,
+    viewModel: PlantariaViewModel,
+) {
     val navController = rememberNavController()
     val destinations = listOf(
         PlantariaDestination.Map,
@@ -155,8 +198,9 @@ fun PlantariaApp(
                 UserScreen(
                     contentPadding = innerPadding,
                     user = uiState.session.user,
-                    apiBaseUrl = uiState.session.apiBaseUrl,
-                    records = uiState.records,
+                    activity = uiState.userActivity,
+                    isLoading = uiState.isUserActivityLoading,
+                    onRefresh = viewModel::refreshUserActivity,
                     onLogout = viewModel::logout,
                 )
             }

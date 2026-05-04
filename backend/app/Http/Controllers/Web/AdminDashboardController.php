@@ -13,6 +13,7 @@ use App\Models\ModerationFlag;
 use App\Models\Observation;
 use App\Models\PlantRecord;
 use App\Models\User;
+use App\Services\PandasAnalyticsReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -21,7 +22,7 @@ use Illuminate\View\View;
 
 class AdminDashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, PandasAnalyticsReport $pandasReport): View
     {
         $this->ensureModerator($request);
 
@@ -75,13 +76,14 @@ class AdminDashboardController extends Controller
             'topSearches' => $topSearches,
             'topCreators' => $topCreators,
             'recentEvents' => AppEvent::query()->latest('occurred_at')->limit(10)->get(),
+            'pandasAnalytics' => $pandasReport->read(),
         ]);
     }
 
     private function buildDailyActivity(\DateTimeInterface $from, int $days): Collection
     {
         $rows = AppEvent::query()
-            ->selectRaw("DATE(occurred_at) as day, COUNT(*) as total_events, COUNT(DISTINCT user_id) as active_users")
+            ->selectRaw('DATE(occurred_at) as day, COUNT(*) as total_events, COUNT(DISTINCT user_id) as active_users')
             ->where('occurred_at', '>=', $from)
             ->groupBy('day')
             ->orderBy('day')
@@ -112,18 +114,10 @@ class AdminDashboardController extends Controller
     private function buildHourlyActivity(): Collection
     {
         $hourlyActivity = AppEvent::query()
-            ->selectRaw("strftime('%H', occurred_at) as hour, COUNT(*) as total_events")
+            ->selectRaw($this->hourExpression().' as hour, COUNT(*) as total_events')
             ->groupBy('hour')
             ->orderBy('hour')
             ->get();
-
-        if (DB::getDriverName() === 'pgsql') {
-            $hourlyActivity = AppEvent::query()
-                ->selectRaw("TO_CHAR(occurred_at, 'HH24') as hour, COUNT(*) as total_events")
-                ->groupBy('hour')
-                ->orderBy('hour')
-                ->get();
-        }
 
         $rows = $hourlyActivity->keyBy(fn (object $row): string => str_pad((string) $row->hour, 2, '0', STR_PAD_LEFT));
         $series = collect(range(0, 23))->map(function (int $hour) use ($rows): array {
@@ -142,6 +136,13 @@ class AdminDashboardController extends Controller
             ...$item,
             'events_percent' => (int) round(($item['total_events'] / $maxEvents) * 100),
         ]);
+    }
+
+    private function hourExpression(): string
+    {
+        return DB::getDriverName() === 'pgsql'
+            ? "TO_CHAR(occurred_at, 'HH24')"
+            : "strftime('%H', occurred_at)";
     }
 
     private function ensureModerator(Request $request): void

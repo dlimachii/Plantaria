@@ -28,6 +28,11 @@ bash -n "$ROOT_DIR/scripts/start_mobile_stack.sh"
 bash -n "$ROOT_DIR/scripts/install_debug_apk.sh"
 bash -n "$ROOT_DIR/scripts/validate_project.sh"
 bash -n "$ROOT_DIR/scripts/package_for_onedrive.sh"
+bash -n "$ROOT_DIR/scripts/profile_app_performance.sh"
+
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -Command "\$ErrorActionPreference='Stop'; \$null = [System.Management.Automation.Language.Parser]::ParseFile('$ROOT_DIR/scripts/install_debug_apk.ps1', [ref]\$null, [ref]\$null)"
+fi
 
 section "Ejecutando tests backend"
 cd "$BACKEND_DIR"

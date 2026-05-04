@@ -66,3 +66,15 @@ data class PlantObservation(
     val observedAt: String?,
     val author: RecordAuthor?,
 )
+
+data class UserActivityItem(
+    val id: String,
+    val type: String,
+    val label: String,
+    val description: String?,
+    val occurredAt: String?,
+    val recordPublicId: String?,
+    val recordName: String?,
+    val photoUrl: String?,
+    val status: String?,
+)

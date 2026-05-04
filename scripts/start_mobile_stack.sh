@@ -24,10 +24,10 @@ php artisan storage:link || true
 
 echo
 
-echo "Backend listo. URLs recomendadas para la app:"
-echo "- Emulador Android: http://10.0.2.2:8000/api/"
-echo "- Movil por USB con adb reverse: http://127.0.0.1:8000/api/"
-echo "- Movil por Wi-Fi: http://IP_DE_TU_PC:8000/api/"
+echo "Backend listo para la app:"
+echo "- Emulador Android: la app usa http://10.0.2.2:8000/api/"
+echo "- Movil por USB: ejecuta adb reverse tcp:8000 tcp:8000; install_debug_apk.sh lo prepara automaticamente."
+echo "- Movil por Wi-Fi: requiere una build con URL LAN configurada."
 echo
 
 echo "==> Iniciando Laravel en http://0.0.0.0:8000"

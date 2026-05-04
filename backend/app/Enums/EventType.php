@@ -14,4 +14,9 @@ enum EventType: string
     case OBSERVATION_CREATED = 'observation_created';
     case RECORD_VERIFIED = 'record_verified';
     case FLAG_CREATED = 'flag_created';
+    case FLAG_UPDATED = 'flag_updated';
+    case PROFILE_UPDATED = 'profile_updated';
+    case USER_UPDATED = 'user_updated';
+    case USER_BANNED = 'user_banned';
+    case USER_DELETED = 'user_deleted';
 }

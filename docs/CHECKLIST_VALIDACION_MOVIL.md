@@ -6,15 +6,16 @@ Usar esta lista para cerrar la prueba fisica del APK actual.
 
 - [ ] `docker compose ps` muestra `plantaria-postgis` healthy.
 - [ ] `./scripts/start_mobile_stack.sh` esta ejecutandose.
-- [ ] `adb devices` detecta el telefono.
-- [ ] `adb reverse tcp:8000 tcp:8000` ejecutado si se usa USB.
-- [ ] APK instalado con `./scripts/install_debug_apk.sh`.
-- [ ] URL API en Android: `http://127.0.0.1:8000/api/` para USB o IP LAN para Wi-Fi.
+- [ ] Desde Windows PowerShell, `adb devices` detecta el telefono.
+- [ ] Desde Windows PowerShell, `adb reverse tcp:8000 tcp:8000` ejecutado si se usa USB.
+- [ ] APK instalado desde Windows PowerShell con `scripts/install_debug_apk.ps1`.
+- [ ] En USB, la app conecta sin pedir URL tras preparar `adb reverse`.
 
 ## Sesion
 
 - [ ] La app abre sin cierre inesperado.
 - [ ] Login con `plantaria_demo` funciona.
+- [ ] Login alternativo con `plantaria_user`, `plantaria_mod` o `plantaria_admin` funciona segun el rol a probar.
 - [ ] La sesion queda guardada al cerrar y reabrir la app.
 - [ ] Logout funciona y vuelve a autenticacion.
 

@@ -18,5 +18,7 @@ if ! adb get-state >/dev/null 2>&1; then
   exit 1
 fi
 
+adb reverse tcp:8000 tcp:8000 >/dev/null 2>&1 || true
 adb install -r "$APK_PATH"
 echo "APK instalado desde: $APK_PATH"
+echo "Si es un movil fisico por USB, queda preparado adb reverse tcp:8000 tcp:8000."

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\EventType;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateManagedUserRequest;
+use App\Models\AppEvent;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,7 +62,7 @@ class UserManagementController extends Controller
 
     public function update(UpdateManagedUserRequest $request, string $handle): JsonResponse
     {
-        $this->ensureAdmin();
+        $admin = $this->ensureAdmin();
 
         $user = User::query()
             ->where('handle', Str::lower($handle))
@@ -74,6 +76,13 @@ class UserManagementController extends Controller
 
         $user->fill($validated)->save();
 
+        AppEvent::record(EventType::USER_UPDATED, $admin, metadata: [
+            'target_handle' => $user->handle,
+            'role' => $user->role?->value,
+            'status' => $user->status?->value,
+            'source' => 'api_admin',
+        ]);
+
         return response()->json([
             'data' => $this->payload($user->fresh(), true),
         ]);
@@ -81,7 +90,7 @@ class UserManagementController extends Controller
 
     public function ban(string $handle): JsonResponse
     {
-        $this->ensureAdmin();
+        $admin = $this->ensureAdmin();
 
         $user = User::query()
             ->where('handle', Str::lower($handle))
@@ -91,6 +100,11 @@ class UserManagementController extends Controller
             'status' => UserStatus::BANNED,
         ])->save();
 
+        AppEvent::record(EventType::USER_BANNED, $admin, metadata: [
+            'target_handle' => $user->handle,
+            'source' => 'api_admin',
+        ]);
+
         return response()->json([
             'data' => $this->payload($user, true),
         ]);
@@ -98,13 +112,18 @@ class UserManagementController extends Controller
 
     public function destroy(string $handle): JsonResponse
     {
-        $this->ensureAdmin();
+        $admin = $this->ensureAdmin();
 
         $user = User::query()
             ->where('handle', Str::lower($handle))
             ->firstOrFail();
 
         $user->delete();
+
+        AppEvent::record(EventType::USER_DELETED, $admin, metadata: [
+            'target_handle' => Str::lower($handle),
+            'source' => 'api_admin',
+        ]);
 
         return response()->json([
             'message' => 'Usuario eliminado.',
@@ -142,11 +161,13 @@ class UserManagementController extends Controller
         return $payload;
     }
 
-    private function ensureAdmin(): void
+    private function ensureAdmin(): User
     {
         /** @var User|null $user */
         $user = auth()->user();
 
         abort_unless($user && $user->role === UserRole::ADMIN, 403, 'Solo administracion.');
+
+        return $user;
     }
 }

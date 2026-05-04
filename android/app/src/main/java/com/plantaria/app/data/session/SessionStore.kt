@@ -22,7 +22,7 @@ class SessionStore(
 
         AppSession(
             token = token,
-            apiBaseUrl = preferences[API_BASE_URL] ?: defaultApiBaseUrl,
+            apiBaseUrl = defaultApiBaseUrl,
             user = handle?.let {
                 ApiUser(
                     uid = preferences[UID],
@@ -39,12 +39,6 @@ class SessionStore(
                 )
             },
         )
-    }
-
-    suspend fun saveApiBaseUrl(apiBaseUrl: String) {
-        dataStore.edit { preferences ->
-            preferences[API_BASE_URL] = apiBaseUrl
-        }
     }
 
     suspend fun save(authToken: String, user: ApiUser) {
@@ -95,7 +89,6 @@ class SessionStore(
 
     private companion object {
         val TOKEN = stringPreferencesKey("token")
-        val API_BASE_URL = stringPreferencesKey("api_base_url")
         val UID = stringPreferencesKey("uid")
         val HANDLE = stringPreferencesKey("handle")
         val DISPLAY_NAME = stringPreferencesKey("display_name")

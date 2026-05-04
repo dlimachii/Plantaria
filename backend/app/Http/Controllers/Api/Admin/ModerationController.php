@@ -156,6 +156,13 @@ class ModerationController extends Controller
             'resolved_at' => now(),
         ])->save();
 
+        AppEvent::record(EventType::FLAG_UPDATED, $moderator, metadata: [
+            'flag_uid' => $flag->uid,
+            'status' => $flag->status->value,
+            'target_type' => $flag->target_type?->value,
+            'target_id' => $flag->target_id,
+        ]);
+
         return response()->json([
             'data' => [
                 'uid' => $flag->uid,

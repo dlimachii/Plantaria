@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Enums\EventType;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
+use App\Models\AppEvent;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,7 +69,7 @@ class UserPanelController extends Controller
 
     public function update(Request $request, string $handle): RedirectResponse
     {
-        $this->ensureAdmin($request);
+        $admin = $this->ensureAdmin($request);
 
         $user = User::query()
             ->where('handle', Str::lower($handle))
@@ -91,15 +93,24 @@ class UserPanelController extends Controller
             'city' => $validated['city'] ?? null,
         ])->save();
 
+        AppEvent::record(EventType::USER_UPDATED, $admin, metadata: [
+            'target_handle' => $user->handle,
+            'role' => $user->role?->value,
+            'status' => $user->status?->value,
+            'source' => 'web_admin',
+        ]);
+
         return redirect()
             ->route('admin.users.show', $user->handle)
             ->with('status', 'Usuario actualizado.');
     }
 
-    private function ensureAdmin(Request $request): void
+    private function ensureAdmin(Request $request): User
     {
         $user = $request->user();
 
         abort_unless($user && $user->role === UserRole::ADMIN, 403);
+
+        return $user;
     }
 }

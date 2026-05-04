@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\PlantRecord;
+use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -28,5 +31,26 @@ class DatabaseSeederTest extends TestCase
         $image = Storage::disk('public')->get($record->primary_photo_path);
 
         $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", $image);
+    }
+
+    public function test_database_seeder_creates_demo_users_for_each_role(): void
+    {
+        Storage::fake('public');
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertDemoUser('plantaria_user', 'PlantariaUser1', UserRole::USER);
+        $this->assertDemoUser('plantaria_mod', 'PlantariaMod1', UserRole::MOD);
+        $this->assertDemoUser('plantaria_admin', 'PlantariaAdmin1', UserRole::ADMIN);
+    }
+
+    private function assertDemoUser(string $handle, string $password, UserRole $role): void
+    {
+        $user = User::query()
+            ->where('handle', $handle)
+            ->firstOrFail();
+
+        $this->assertSame($role, $user->role);
+        $this->assertTrue(Hash::check($password, $user->password));
     }
 }

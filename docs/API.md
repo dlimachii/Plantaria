@@ -23,6 +23,16 @@ Las rutas autenticadas exigen que la cuenta siga activa. Si un usuario queda blo
 
 ## Autenticacion
 
+El seeder de demo deja estas cuentas de prueba por rol:
+
+```text
+USER  · plantaria_user  / PlantariaUser1
+MOD   · plantaria_mod   / PlantariaMod1
+ADMIN · plantaria_admin / PlantariaAdmin1
+```
+
+Tambien existe `plantaria_demo / PlantariaDemo1` como usuario con registros demo.
+
 ### Registro
 
 ```http
@@ -76,6 +86,38 @@ POST /api/auth/logout
 
 Requiere token.
 
+### Actividad propia
+
+```http
+GET /api/me/activity?limit=30
+```
+
+Requiere token. Devuelve las ultimas acciones hechas por la cuenta autenticada, no todos los registros cargados en la app.
+
+Incluye:
+
+- reportes creados por el usuario;
+- observaciones/commits creados por el usuario, excluyendo la observacion inicial automatica del reporte;
+- denuncias enviadas por el usuario;
+- acciones registradas de perfil, moderacion y administracion cuando las haga esa cuenta.
+
+Campos principales de cada item:
+
+```json
+{
+  "id": "record:uuid",
+  "type": "record_created",
+  "label": "Reporte creado",
+  "description": "Lavanda",
+  "occurred_at": "2026-04-28T15:24:00+00:00",
+  "record_public_id": "01HV...",
+  "record_name": "Lavanda",
+  "photo_url": "http://127.0.0.1:8000/storage/uploads/lavanda.jpg",
+  "status": "pending",
+  "metadata": {}
+}
+```
+
 ## Registros
 
 ### Listar registros
@@ -86,7 +128,7 @@ GET /api/records
 
 Filtros:
 
-- `q`: ID publico, nombre provisional, nombre comun validado o nombre cientifico.
+- `q`: nombre provisional, nombre comun validado o nombre cientifico.
 - `status`: `pending`, `verified`, `rejected`.
 - `limit`: de `1` a `100`.
 - `latitude`, `longitude`, `radius_km`: filtro por radio.

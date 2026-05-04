@@ -7,6 +7,7 @@ import com.plantaria.app.data.model.PlaceSearchResult
 import com.plantaria.app.data.model.PlantObservation
 import com.plantaria.app.data.model.PlantRecord
 import com.plantaria.app.data.model.RecordAuthor
+import com.plantaria.app.data.model.UserActivityItem
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -85,6 +86,16 @@ class PlantariaApiClient(
             method = "POST",
             token = token,
         )
+    }
+
+    suspend fun myActivity(token: String): List<UserActivityItem> {
+        val response = request(
+            path = "me/activity?limit=30",
+            method = "GET",
+            token = token,
+        )
+
+        return response.getJSONArray("data").toUserActivityItems()
     }
 
     suspend fun records(query: String? = null): List<PlantRecord> {
@@ -315,6 +326,32 @@ class PlantariaApiClient(
                 add(getJSONObject(index).toPlaceSearchResult())
             }
         }
+    }
+
+    private fun JSONArray.toUserActivityItems(): List<UserActivityItem> {
+        return buildList {
+            for (index in 0 until length()) {
+                add(getJSONObject(index).toUserActivityItem())
+            }
+        }
+    }
+
+    private fun JSONObject.toUserActivityItem(): UserActivityItem {
+        val type = optString("type")
+        val occurredAt = optNullableString("occurred_at")
+        val recordPublicId = optNullableString("record_public_id")
+
+        return UserActivityItem(
+            id = optString("id", "$type-$occurredAt-${recordPublicId.orEmpty()}"),
+            type = type,
+            label = optString("label"),
+            description = optNullableString("description"),
+            occurredAt = occurredAt,
+            recordPublicId = recordPublicId,
+            recordName = optNullableString("record_name"),
+            photoUrl = publicAssetUrl(optNullableString("photo_url"), null),
+            status = optNullableString("status"),
+        )
     }
 
     private fun JSONObject.toPlantRecord(): PlantRecord {

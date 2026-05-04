@@ -2,6 +2,7 @@ package com.plantaria.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,11 +28,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.plantaria.app.ui.components.PlantariaAnimatedLogo
 import com.plantaria.app.ui.theme.PlantariaColors
 
 private enum class AuthMode {
@@ -41,14 +44,11 @@ private enum class AuthMode {
 
 @Composable
 fun AuthScreen(
-    apiBaseUrl: String,
     isLoading: Boolean,
     message: String?,
     error: String?,
-    onApiBaseUrlChange: (String) -> Unit,
-    onLogin: (apiBaseUrl: String, handle: String, password: String) -> Unit,
+    onLogin: (handle: String, password: String) -> Unit,
     onRegister: (
-        apiBaseUrl: String,
         handle: String,
         displayName: String,
         email: String,
@@ -60,7 +60,6 @@ fun AuthScreen(
     ) -> Unit,
 ) {
     var mode by rememberSaveable { mutableStateOf(AuthMode.Login) }
-    var editableApiBaseUrl by rememberSaveable(apiBaseUrl) { mutableStateOf(apiBaseUrl) }
     var handle by rememberSaveable { mutableStateOf("") }
     var displayName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -72,7 +71,6 @@ fun AuthScreen(
     var submitted by rememberSaveable { mutableStateOf(false) }
 
     val isRegister = mode == AuthMode.Register
-    val apiBaseUrlErrorMessage = if (submitted) apiBaseUrlError(editableApiBaseUrl) else null
     val handleErrorMessage = if (submitted) handleError(handle, isRegister) else null
     val displayNameErrorMessage = if (submitted && isRegister) requiredAuthError(displayName, "El nombre visible") else null
     val emailErrorMessage = if (submitted && isRegister) emailError(email) else null
@@ -92,21 +90,19 @@ fun AuthScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = "Plantaria",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = PlantariaColors.Leaf,
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            PlantariaAnimatedLogo(
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
         Text(
             text = "Mapa colaborativo de registros vegetales",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        QuickApiHintCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp),
+                .padding(top = 10.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
 
         Card(
@@ -150,20 +146,6 @@ fun AuthScreen(
                         },
                     )
                 }
-
-                OutlinedTextField(
-                    value = editableApiBaseUrl,
-                    onValueChange = {
-                        editableApiBaseUrl = it
-                        onApiBaseUrlChange(it)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("URL API") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    isError = apiBaseUrlErrorMessage != null,
-                    supportingText = apiBaseUrlErrorMessage?.let { message -> { Text(message) } },
-                )
 
                 OutlinedTextField(
                     value = handle,
@@ -253,16 +235,14 @@ fun AuthScreen(
                         submitted = true
                         if (mode == AuthMode.Login) {
                             val currentErrors = listOf(
-                                apiBaseUrlError(editableApiBaseUrl),
                                 handleError(handle, isRegister = false),
                                 passwordError(password, isRegister = false),
                             )
                             if (currentErrors.all { it == null }) {
-                                onLogin(editableApiBaseUrl, handle, password)
+                                onLogin(handle, password)
                             }
                         } else {
                             val currentErrors = listOf(
-                                apiBaseUrlError(editableApiBaseUrl),
                                 handleError(handle, isRegister = true),
                                 requiredAuthError(displayName, "El nombre visible"),
                                 emailError(email),
@@ -272,7 +252,6 @@ fun AuthScreen(
                             )
                             if (currentErrors.all { it == null }) {
                                 onRegister(
-                                    editableApiBaseUrl,
                                     handle,
                                     displayName,
                                     email,
@@ -339,54 +318,6 @@ fun StatusText(
                 color = PlantariaColors.Leaf,
             )
         }
-    }
-}
-
-@Composable
-private fun QuickApiHintCard(
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = "Conexión rápida",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "Emulador: http://10.0.2.2:8000/api/",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Móvil USB con adb reverse: http://127.0.0.1:8000/api/",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Móvil por Wi-Fi: http://IP_DE_TU_PC:8000/api/",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-private fun apiBaseUrlError(value: String): String? {
-    val trimmed = value.trim()
-    return when {
-        trimmed.isBlank() -> "La URL de API es obligatoria."
-        !trimmed.startsWith("http://") && !trimmed.startsWith("https://") -> {
-            "La URL debe empezar por http:// o https://."
-        }
-        else -> null
     }
 }
 

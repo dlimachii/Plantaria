@@ -25,43 +25,45 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::query()->firstOrNew([
-            'email' => env('PLANTARIA_ADMIN_EMAIL', 'admin@plantaria.local'),
-        ]);
+        $admin = $this->seedDemoUser(
+            email: env('PLANTARIA_ADMIN_EMAIL', 'admin@plantaria.local'),
+            handle: env('PLANTARIA_ADMIN_HANDLE', 'plantaria_admin'),
+            displayName: env('PLANTARIA_ADMIN_NAME', 'Plantaria Admin'),
+            password: env('PLANTARIA_ADMIN_PASSWORD', 'PlantariaAdmin1'),
+            role: UserRole::ADMIN,
+            province: 'Valencia',
+            city: 'Valencia',
+        );
 
-        $admin->fill([
-            'handle' => Str::lower(env('PLANTARIA_ADMIN_HANDLE', 'plantaria_admin')),
-            'display_name' => env('PLANTARIA_ADMIN_NAME', 'Plantaria Admin'),
-            'password' => Hash::make(env('PLANTARIA_ADMIN_PASSWORD', 'PlantariaAdmin1')),
-            'country' => 'Espana',
-            'province' => 'Valencia',
-            'city' => 'Valencia',
-            'role' => UserRole::ADMIN,
-            'status' => UserStatus::ACTIVE,
-        ]);
-        $admin->uid ??= (string) Str::uuid();
-        $admin->email_verified_at = now();
-        $admin->save();
+        $demoUser = $this->seedDemoUser(
+            email: 'demo@plantaria.local',
+            handle: 'plantaria_demo',
+            displayName: 'Plantaria Demo',
+            password: 'PlantariaDemo1',
+            role: UserRole::USER,
+            defaultLat: 41.3874,
+            defaultLng: 2.1686,
+        );
 
-        $demoUser = User::query()->firstOrNew([
-            'email' => 'demo@plantaria.local',
-        ]);
+        $this->seedDemoUser(
+            email: 'user@plantaria.local',
+            handle: 'plantaria_user',
+            displayName: 'Plantaria Usuario',
+            password: 'PlantariaUser1',
+            role: UserRole::USER,
+            defaultLat: 41.3874,
+            defaultLng: 2.1686,
+        );
 
-        $demoUser->fill([
-            'handle' => 'plantaria_demo',
-            'display_name' => 'Plantaria Demo',
-            'password' => Hash::make('PlantariaDemo1'),
-            'country' => 'Espana',
-            'province' => 'Barcelona',
-            'city' => 'Barcelona',
-            'default_lat' => 41.3874,
-            'default_lng' => 2.1686,
-            'role' => UserRole::USER,
-            'status' => UserStatus::ACTIVE,
-        ]);
-        $demoUser->uid ??= (string) Str::uuid();
-        $demoUser->email_verified_at = now();
-        $demoUser->save();
+        $this->seedDemoUser(
+            email: 'mod@plantaria.local',
+            handle: 'plantaria_mod',
+            displayName: 'Plantaria Moderador',
+            password: 'PlantariaMod1',
+            role: UserRole::MOD,
+            defaultLat: 41.3874,
+            defaultLng: 2.1686,
+        );
 
         $demoRecords = [
             [
@@ -171,6 +173,40 @@ class DatabaseSeeder extends Seeder
             $observation->uid ??= (string) Str::uuid();
             $observation->save();
         }
+    }
+
+    private function seedDemoUser(
+        string $email,
+        string $handle,
+        string $displayName,
+        string $password,
+        UserRole $role,
+        string $province = 'Barcelona',
+        string $city = 'Barcelona',
+        ?float $defaultLat = null,
+        ?float $defaultLng = null,
+    ): User {
+        $user = User::query()->firstOrNew([
+            'email' => $email,
+        ]);
+
+        $user->fill([
+            'handle' => Str::lower($handle),
+            'display_name' => $displayName,
+            'password' => Hash::make($password),
+            'country' => 'Espana',
+            'province' => $province,
+            'city' => $city,
+            'default_lat' => $defaultLat,
+            'default_lng' => $defaultLng,
+            'role' => $role,
+            'status' => UserStatus::ACTIVE,
+        ]);
+        $user->uid ??= (string) Str::uuid();
+        $user->email_verified_at = now();
+        $user->save();
+
+        return $user;
     }
 
     private function ensureDemoPhoto(string $path, array $baseColor): void

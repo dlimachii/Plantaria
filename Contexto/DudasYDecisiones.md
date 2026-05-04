@@ -599,6 +599,90 @@ Motivo:
 
 Las rutas demo existían en base de datos, pero los ficheros no estaban en `storage/app/public`. Generarlos desde el seeder evita fotos rotas en Android y en el panel web después de una instalación limpia.
 
+### Cuentas demo por rol y login sin URL visible
+
+Estado: resuelta
+
+Fecha: 2026-04-28 16:48 CEST
+
+Decisión:
+
+- crear cuentas seedables por rol para pruebas de permisos:
+  - `plantaria_user`;
+  - `plantaria_mod`;
+  - `plantaria_admin`;
+- mantener `plantaria_demo` como usuario con registros demo;
+- ocultar el campo técnico de URL de API en el login Android;
+- resolver la URL local desde la app:
+  - emulador con `10.0.2.2`;
+  - teléfono físico con `127.0.0.1` y `adb reverse`;
+- dejar el flujo Wi-Fi como caso no principal, porque exige una URL LAN específica por máquina.
+
+Motivo:
+
+La demo necesita probar roles sin crear usuarios manualmente y el login móvil no debe exponer detalles técnicos de red al usuario. Para la prueba física local, `adb reverse` reduce fricción y evita tener que escribir IPs en la app.
+
+### Actividad propia en perfil Android
+
+Estado: resuelta
+
+Fecha: 2026-04-28 17:24 CEST
+
+Decisión:
+
+- la pestaña `Usuario` no debe enseñar todos los registros cargados por la app;
+- debe consultar `/api/me/activity` y mostrar solo acciones recientes realizadas por la cuenta autenticada;
+- un usuario seedado sin acciones propias debe ver el perfil sin actividad reciente;
+- los reportes creados por la cuenta aparecen como actividad;
+- las observaciones/commits aparecen solo cuando son actualizaciones reales, excluyendo la observación inicial automática creada junto al reporte;
+- las denuncias, cambios de perfil y acciones de moderación/admin quedan registradas como eventos propios de quien las ejecuta.
+
+Motivo:
+
+El perfil representa a la cuenta actual, no el estado global del mapa. Separar actividad propia de registros globales evita confusión al probar roles `USER`, `MOD` y `ADMIN`.
+
+### Integracion Python+pandas y Ollama en panel admin
+
+Estado: resuelta
+
+Fecha: 2026-04-28 17:37 CEST
+
+Decisión:
+
+- mantener Laravel como backend transaccional y panel web principal;
+- exportar datos operativos a CSV desde el comando `php artisan plantaria:analytics:build`;
+- calcular agregados con `analytics/build_admin_analytics.py` usando `pandas`;
+- guardar el resultado en `storage/app/analytics/output/admin_dashboard.json`;
+- hacer que el dashboard `/admin` lea y muestre ese snapshot si existe;
+- permitir a `ADMIN` regenerar el snapshot desde el panel;
+- preparar `/admin/assistant` como consulta local a Ollama usando el JSON de pandas como contexto;
+- dejar el modelo ligero configurable con `OLLAMA_MODEL`, por defecto `llama3.2:1b`.
+
+Motivo:
+
+Así Python+pandas tiene un papel real y defendible sin meterlo en el flujo crítico de moderación. Ollama queda como mejora local opcional, útil para demo, pero no bloquea el panel si no está instalado.
+
+### Consultas directas seguras en asistente admin
+
+Estado: resuelta
+
+Fecha: 2026-04-30 16:20 CEST
+
+Decisión:
+
+- `/admin/assistant` debe intentar primero resolver preguntas administrativas conocidas mediante consultas Laravel acotadas;
+- las preguntas sobre usuarios con más observaciones y plantas verificadas sin nombre científico se contestan desde `users`, `observations` y `plant_records`;
+- no se permite que Ollama invente SQL libre para estas consultas;
+- el snapshot Python+pandas queda como contexto complementario para preguntas abiertas, no como requisito para consultar datos operativos.
+
+Motivo:
+
+Evita respuestas alucinadas, como confundir observaciones con `moderation_flags`, y hace que el panel siga respondiendo preguntas básicas aunque todavía no se haya generado `storage/app/analytics/output/admin_dashboard.json`.
+
+Nota operativa 2026-04-30 16:20 CEST:
+
+En el entorno local se creó `analytics/.venv`, se instalaron las dependencias Python y se generó `admin_dashboard.json`; aun así, la decisión se mantiene para que el asistente no dependa de ese snapshot en consultas acotadas.
+
 ### Referencia API práctica
 
 Estado: resuelta

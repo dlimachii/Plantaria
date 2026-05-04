@@ -40,6 +40,8 @@ class ProfileController extends Controller
 
         $user->save();
 
+        AppEvent::record(EventType::PROFILE_UPDATED, $user);
+
         return response()->json([
             'user' => $this->publicPayload($user->fresh()),
         ]);

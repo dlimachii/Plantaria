@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Web\AdminDashboardController;
+use App\Http\Controllers\Web\AdminAnalyticsController;
+use App\Http\Controllers\Web\AdminAssistantController;
 use App\Http\Controllers\Web\AdminSessionController;
 use App\Http\Controllers\Web\FlagPanelController;
 use App\Http\Controllers\Web\ModerationPanelController;
@@ -21,6 +23,9 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
     Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
     Route::get('/', AdminDashboardController::class)->name('dashboard');
+    Route::post('/analytics/rebuild', [AdminAnalyticsController::class, 'rebuild'])->name('analytics.rebuild');
+    Route::get('/assistant', [AdminAssistantController::class, 'index'])->name('assistant.index');
+    Route::post('/assistant', [AdminAssistantController::class, 'ask'])->name('assistant.ask');
 
     Route::prefix('moderation')->name('moderation.')->group(function (): void {
         Route::get('/pending', [ModerationPanelController::class, 'pending'])->name('pending');

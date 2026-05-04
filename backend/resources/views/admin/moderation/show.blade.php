@@ -21,7 +21,7 @@
 
             <h2>Observaciones</h2>
             @forelse ($record->observations as $observation)
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                <div id="observation-{{ $observation->uid }}" style="display: flex; gap: 12px; margin-bottom: 12px;">
                     <img class="thumb" src="{{ asset('storage/'.$observation->photo_path) }}" alt="Observacion">
                     <div>
                         <strong>{{ optional($observation->observed_at)->format('Y-m-d H:i') }}</strong><br>
@@ -35,6 +35,32 @@
         </section>
 
         <aside class="card">
+            <h2>Flags relacionados</h2>
+            @if ($relatedFlags->isEmpty())
+                <p class="muted">No hay denuncias asociadas a este registro.</p>
+            @else
+                <div style="display: grid; gap: 12px; margin-bottom: 20px;">
+                    @foreach ($relatedFlags as $flag)
+                        <div style="border: 1px solid #dbe3d5; border-radius: 12px; padding: 12px; background: #fafcf8;">
+                            <div class="actions" style="justify-content: space-between; align-items: flex-start;">
+                                <strong>{{ $flag->status->value }}</strong>
+                                <span class="muted">{{ optional($flag->created_at)->format('Y-m-d H:i') }}</span>
+                            </div>
+                            <p style="margin: 8px 0;">{{ $flag->reason }}</p>
+                            <p class="muted" style="margin: 0;">
+                                {{ $flag->target_type->value }}
+                                @if ($flag->target_type === \App\Enums\FlagTargetType::OBSERVATION && $flag->observation)
+                                    · {{ $flag->observation->public_id }}
+                                @endif
+                                · reporta {{ $flag->reporter?->handle ? '@'.$flag->reporter->handle : 'sin usuario' }}
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            <hr style="border: 0; border-top: 1px solid #dbe3d5; margin: 20px 0;">
+
             <h2>Validar ficha</h2>
             <form method="post" action="{{ route('admin.moderation.verify', $record->public_id) }}">
                 @csrf

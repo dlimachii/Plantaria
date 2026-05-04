@@ -30,7 +30,7 @@ Este archivo pasa a combinar dos cosas:
 
 - Python 3.12.x como apoyo analítico;
 - `pandas` como librería prevista para tratamiento de datos e informes;
-- `Ollama` como opción local futura para consultas administrativas en lenguaje natural.
+- `Ollama` como opción local para consultas administrativas en lenguaje natural.
 
 ### Base de datos
 
@@ -78,7 +78,7 @@ Estado actualizado: 2026-04-22 17:30 CEST.
 
 ## Panel web Laravel
 
-Estado actualizado: 2026-04-23 16:53 CEST.
+Estado actualizado: 2026-04-30 16:20 CEST.
 
 - Rutas web bajo `/admin`.
 - Login web en `/admin/login` usando handle o email.
@@ -90,21 +90,34 @@ Estado actualizado: 2026-04-23 16:53 CEST.
 - Gestión básica de usuarios en `/admin/users` para rol `admin`.
 - Proxy de geocodificación en `/api/geocoding/search` para búsquedas de lugar desde Android.
 - Dashboard visual en `/admin` con métricas y analítica de uso renderizada en servidor.
+- Snapshot Python+pandas en `/admin` generado por `php artisan plantaria:analytics:build`.
+- Entorno local Python de analítica preparado en `analytics/.venv`; `.env` local apunta `PLANTARIA_ANALYTICS_PYTHON=../analytics/.venv/bin/python`.
+- Asistente local en `/admin/assistant`: primero consultas directas seguras de BBDD para preguntas conocidas; Ollama se usa si está disponible para preguntas abiertas con contexto pandas.
 - Estilo de mapa Android configurable por `PLANTARIA_MAP_STYLE_URL` en `app/build.gradle.kts`.
 
 ## Prueba móvil real
 
-Estado actualizado: 2026-04-23 19:50 CEST.
+Estado actualizado: 2026-04-30 17:15 CEST.
 
 - `scripts/start_mobile_stack.sh` arranca ahora Laravel con:
   - `upload_max_filesize=20M`;
   - `post_max_size=24M`;
   - `memory_limit=512M`.
+- `scripts/profile_app_performance.sh` permite perfilado rápido API/APK/ADB:
+  - `PLANTARIA_PROFILE_RUNS` cambia iteraciones;
+  - `PLANTARIA_PROFILE_BASE_URL` apunta a una API ya arrancada;
+  - `PLANTARIA_PROFILE_PORT` cambia el puerto temporal si el script arranca Laravel.
 - La ruta backend de subida de fotos acepta hasta `20 MB` para la prueba móvil.
 - La app Android comprime/prepara la imagen antes de subirla para reducir fallos con fotos reales de cámara o galería.
-- La combinación operativa de esta sesión para móvil físico sigue siendo:
-  - `adb reverse tcp:8000 tcp:8000`;
-  - URL API `http://127.0.0.1:8000/api/`.
+- La pantalla de login ya no muestra el campo técnico de URL de API.
+- Desde 2026-04-28 16:48 CEST, Android decide URL local por dispositivo:
+  - emulador: `http://10.0.2.2:8000/api/`;
+  - teléfono físico: `http://127.0.0.1:8000/api/`.
+- La combinación operativa recomendada para móvil físico sigue siendo:
+  - compilar APK desde WSL;
+  - instalar y ejecutar `adb reverse tcp:8000 tcp:8000` desde Windows PowerShell;
+  - usar `scripts/install_debug_apk.ps1` como flujo recomendado para el móvil físico.
+- `scripts/install_debug_apk.sh` queda como alternativa solo si ADB detecta el teléfono desde WSL.
 
 ## Estado observado del entorno local en esta sesión
 
@@ -206,7 +219,12 @@ Notas:
 - El APK debug aumenta de tamaño al incluir las librerías nativas de MapLibre; se observó un APK de unos 78M tras integrar el mapa.
 - El Gradle global instalado por `apt` es antiguo y no debe usarse para compilar el proyecto.
 - Se creó `~/.gradle` para que el wrapper pueda funcionar de forma normal.
-- Para instalar en móvil físico: `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
+- Para instalar en móvil físico en este equipo, usar Windows PowerShell:
+  - `$Apk = wsl wslpath -w /home/aviddrianimachie/CEAC/Proyecto/android/app/build/outputs/apk/debug/app-debug.apk`;
+  - `adb devices`;
+  - `adb reverse tcp:8000 tcp:8000`;
+  - `adb install -r $Apk`.
+- Si la analítica pandas falla con `ModuleNotFoundError: No module named 'pandas'`, ejecutar `php artisan config:clear` en `backend/`; el `.env` local debe apuntar `PLANTARIA_ANALYTICS_PYTHON=../analytics/.venv/bin/python`.
 - Para que Laravel sirva imágenes subidas desde `storage/app/public`, ejecutar `php artisan storage:link` en una instalación limpia.
 
 ## Variables locales relevantes ya previstas
@@ -262,6 +280,12 @@ Notas del script integral:
 - `PLANTARIA_VALIDATE_PORT=8010` permite cambiar el puerto temporal de Laravel.
 - `composer validate --no-check-publish`: correcto el 2026-04-24 17:34 CEST tras actualizar `composer.lock` por el cambio de metadata del paquete backend.
 - `php artisan test` sube a 24 tests y 113 assertions el 2026-04-24 17:41 CEST tras añadir middleware de cuenta activa y tests de autorización API admin.
+- `php artisan test` sube a 29 tests y 138 assertions el 2026-04-28 16:48 CEST tras añadir cuentas seedables por rol y tests del seeder.
+- `php artisan test` sube a 33 tests y 157 assertions el 2026-04-28 17:24 CEST tras añadir actividad propia de usuario y tests de `/api/me/activity`.
+- `php artisan test` sube a 37 tests y 168 assertions el 2026-04-28 17:37 CEST tras añadir export de analítica, snapshot pandas en dashboard y asistente Ollama opcional.
+- `php artisan test` sube a 38 tests y 176 assertions el 2026-04-30 16:20 CEST tras añadir consultas directas seguras al asistente admin.
+- `php artisan plantaria:analytics:build` correcto el 2026-04-30 16:20 CEST contra PostgreSQL/PostGIS local usando `analytics/.venv`.
+- `scripts/profile_app_performance.sh` correcto el 2026-04-30 16:45 CEST con 3 iteraciones contra Laravel temporal en puerto 8021 y PostgreSQL/PostGIS local.
 
 ## Backup OneDrive
 

@@ -19,31 +19,46 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.plantaria.app.data.model.ApiUser
-import com.plantaria.app.data.model.PlantRecord
+import com.plantaria.app.data.model.UserActivityItem
+import com.plantaria.app.ui.components.RemotePlantariaImage
 import com.plantaria.app.ui.theme.PlantariaColors
 
 @Composable
 fun UserScreen(
     contentPadding: PaddingValues,
     user: ApiUser?,
-    apiBaseUrl: String,
-    records: List<PlantRecord>,
+    activity: List<UserActivityItem>,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
     onLogout: () -> Unit,
 ) {
     LazyColumn(
@@ -55,24 +70,23 @@ fun UserScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            ProfileHeader(user = user, apiBaseUrl = apiBaseUrl, onLogout = onLogout)
+            ProfileHeader(user = user, onLogout = onLogout)
         }
         item {
-            StatsRow(records = records)
+            StatsRow(activity = activity)
         }
         item {
-            Text(
-                text = "Registros cargados",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            ActivityHeader(isLoading = isLoading, onRefresh = onRefresh)
         }
-        items(records, key = { it.publicId }) { record ->
-            UserRecordRow(record)
+        items(
+            items = activity,
+            key = { item -> item.id },
+        ) { item ->
+            UserActivityRow(item)
         }
-        if (records.isEmpty()) {
+        if (activity.isEmpty() && !isLoading) {
             item {
-                EmptyRecordsCard()
+                EmptyActivityCard()
             }
         }
     }
@@ -81,9 +95,10 @@ fun UserScreen(
 @Composable
 private fun ProfileHeader(
     user: ApiUser?,
-    apiBaseUrl: String,
     onLogout: () -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -125,47 +140,66 @@ private fun ProfileHeader(
                 )
                 user?.role?.let {
                     Text(
-                        text = it.uppercase(),
+                        text = roleLabel(it),
                         style = MaterialTheme.typography.labelMedium,
                         color = PlantariaColors.Leaf,
                     )
                 }
-                Text(
-                    text = apiBaseUrl,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
-            OutlinedButton(onClick = onLogout) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Logout,
-                    contentDescription = null,
-                )
-                Text(
-                    text = "Salir",
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = "Opciones de perfil",
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Cerrar sesion") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Logout,
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onLogout()
+                        },
+                    )
+                }
             }
         }
     }
 }
 
+private fun roleLabel(role: String): String {
+    return when (role) {
+        "admin" -> "Rol: administrador"
+        "mod" -> "Rol: moderador"
+        else -> "Rol: usuario"
+    }
+}
+
 @Composable
-private fun StatsRow(records: List<PlantRecord>) {
+private fun StatsRow(activity: List<UserActivityItem>) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         StatCard(
-            label = "Registros",
-            value = records.size.toString(),
+            label = "Acciones",
+            value = activity.size.toString(),
             modifier = Modifier.weight(1f),
         )
         StatCard(
-            label = "Verificados",
-            value = records.count { it.verificationStatus == "verified" }.toString(),
+            label = "Reportes",
+            value = activity.count { it.type == "record_created" }.toString(),
             modifier = Modifier.weight(1f),
         )
         StatCard(
-            label = "Pendientes",
-            value = records.count { it.verificationStatus == "pending" }.toString(),
+            label = "Commits",
+            value = activity.count { it.type == "observation_created" }.toString(),
             modifier = Modifier.weight(1f),
         )
     }
@@ -198,7 +232,45 @@ private fun StatCard(
 }
 
 @Composable
-private fun UserRecordRow(record: PlantRecord) {
+private fun ActivityHeader(
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Actividad reciente",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        TextButton(
+            onClick = onRefresh,
+            enabled = !isLoading,
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = null,
+                )
+            }
+            Text(
+                text = if (isLoading) "Cargando" else "Actualizar",
+                modifier = Modifier.padding(start = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun UserActivityRow(item: UserActivityItem) {
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -216,11 +288,19 @@ private fun UserRecordRow(record: PlantRecord) {
                     .background(PlantariaColors.MapBase),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = PlantariaColors.Leaf,
-                )
+                if (item.photoUrl != null) {
+                    RemotePlantariaImage(
+                        imageUrl = item.photoUrl,
+                        contentDescription = item.description ?: item.label,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = activityIcon(item.type),
+                        contentDescription = null,
+                        tint = PlantariaColors.Leaf,
+                    )
+                }
             }
             Column(
                 modifier = Modifier
@@ -228,24 +308,35 @@ private fun UserRecordRow(record: PlantRecord) {
                     .padding(start = 12.dp),
             ) {
                 Text(
-                    text = record.displayName,
+                    text = item.label,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "${record.publicId} · ${record.latitude}, ${record.longitude}",
+                    text = item.description ?: item.recordName ?: item.recordPublicId ?: "Sin detalle",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                item.occurredAt?.let {
+                    Text(
+                        text = it.toReadableDateTime(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Icon(
-                imageVector = if (record.verificationStatus == "verified") {
+                imageVector = if (item.status == "verified" || item.type == "record_verified") {
                     Icons.Outlined.CheckCircle
                 } else {
                     Icons.Outlined.Schedule
                 },
-                contentDescription = record.verificationStatus,
-                tint = if (record.verificationStatus == "verified") PlantariaColors.Leaf else PlantariaColors.Earth,
+                contentDescription = item.status,
+                tint = if (item.status == "verified" || item.type == "record_verified") {
+                    PlantariaColors.Leaf
+                } else {
+                    PlantariaColors.Earth
+                },
             )
         }
     }
@@ -253,7 +344,7 @@ private fun UserRecordRow(record: PlantRecord) {
 }
 
 @Composable
-private fun EmptyRecordsCard() {
+private fun EmptyActivityCard() {
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -263,15 +354,33 @@ private fun EmptyRecordsCard() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Sin registros cargados",
+                text = "Sin actividad reciente",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Todavía no hay datos visibles desde la API. Si el backend está levantado, crea un reporte en Acciones o recarga el mapa.",
+                text = "Cuando esta cuenta cree reportes, observaciones o acciones de moderacion, apareceran aqui.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
+}
+
+private fun activityIcon(type: String): androidx.compose.ui.graphics.vector.ImageVector {
+    return when (type) {
+        "record_created" -> Icons.Outlined.AddLocationAlt
+        "observation_created" -> Icons.Outlined.EditNote
+        "flag_created", "flag_updated" -> Icons.Outlined.Flag
+        "record_verified" -> Icons.Outlined.CheckCircle
+        else -> Icons.Outlined.LocationOn
+    }
+}
+
+private fun String.toReadableDateTime(): String {
+    return replace('T', ' ')
+        .substringBefore('.')
+        .substringBefore('+')
+        .substringBefore('Z')
+        .take(16)
 }

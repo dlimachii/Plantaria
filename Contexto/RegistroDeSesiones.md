@@ -1,5 +1,218 @@
 # Registro de sesiones
 
+## 2026-05-04 16:40 CEST
+
+### Documento Word profesional para TFG
+
+- Se analizó la plantilla `DocumentoTFG/TFG DAM_DAW.docx` y se extrajo su estructura: portada, tabla de contenidos, capítulos de introducción, análisis, diseño, organización, actividades profesionales, líneas de actuación y bibliografía.
+- Se inventarió el repositorio real para redactar la memoria a partir de código y configuración existentes: backend Laravel, Android Kotlin/Jetpack Compose, PostgreSQL/PostGIS, analítica Python/pandas, panel admin, rutas, modelos, migraciones y scripts.
+- Se creó `scripts/generate_tfg_docx.py` como generador reproducible de Word basado en la plantilla original.
+- Se generó `DocumentoTFG/Plantaria_TFG_DAM.docx` con formato académico, tablas, encabezados jerárquicos, campo de índice automático y marcadores `[PENDIENTE: ...]` donde la información depende del alumno o de investigación externa.
+- El documento incluye una sección final con preguntas pendientes para completar portada, mercado, presupuesto, modalidad de trabajo, publicación, pliego y autoevaluación personal.
+
+### Validaciones ejecutadas
+
+- `python3 scripts/generate_tfg_docx.py`: correcto.
+- `unzip -t DocumentoTFG/Plantaria_TFG_DAM.docx`: correcto, sin errores en el paquete DOCX.
+- Parseo XML de `word/document.xml`: correcto; 65 encabezados con nivel de esquema.
+- Verificación de índice automático: campo `TOC` presente y `w:updateFields` activado.
+- `python3 -m py_compile scripts/generate_tfg_docx.py`: correcto.
+
+### Ajuste posterior 2026-05-04 16:49 CEST
+
+- Se completó la comparativa de plataformas reales del sector con iNaturalist, Pl@ntNet, GBIF, Observation.org/ObsIdentify, Flora Incognita, PictureThis, PlantSnap y OpenStreetMap.
+- Se ajustó el enfoque del documento: Plantaria queda presentado como TFG/MVP con posible escalado comunitario, no como proyecto económico.
+- Se añadió que el código se plantea como público y libre para uso, lectura, escritura y ejecución.
+- Se sustituyeron pendientes de empresas/modelo de negocio por texto redactado y fuentes en bibliografía.
+- Se aclaró que la valoración económica se refiere a recursos/costes de ejecución si el proyecto se despliega, no a beneficios ni ventas.
+- Se dejó indicado que el trabajo es individual.
+- Nueva validación: `python3 scripts/generate_tfg_docx.py`, `python3 -m py_compile scripts/generate_tfg_docx.py` y `unzip -t DocumentoTFG/Plantaria_TFG_DAM.docx` correctos; el DOCX queda con 65 encabezados, 16 tablas y 18 marcadores `[PENDIENTE: ...]`.
+
+### Ajuste posterior 2026-05-04 16:54 CEST
+
+- Se añadió una valoración económica concreta de costes de ejecución para Plantaria:
+  - entrega TFG local: 0 € adicionales si ya se dispone de equipo y móvil;
+  - despliegue público pequeño: 10-25 €/mes más dominio anual;
+  - MVP comunitario con mapas estables: 35-60 €/mes más dominio anual;
+  - escala mayor: desde 60 €/mes en adelante según almacenamiento, mapas, backups, CDN y mantenimiento.
+- Se añadieron fuentes de coste en bibliografía: Google Play Console, Hetzner, Cloudflare R2, MapTiler y Dominios.es.
+- Nueva validación: `python3 scripts/generate_tfg_docx.py`, `python3 -m py_compile scripts/generate_tfg_docx.py` y `unzip -t DocumentoTFG/Plantaria_TFG_DAM.docx` correctos; el DOCX queda con 65 encabezados, 18 tablas y 17 marcadores `[PENDIENTE: ...]`.
+
+## 2026-04-30 17:15 CEST
+
+### Operativa PowerShell para móvil y pandas cacheado
+
+- Se añadió `scripts/install_debug_apk.ps1` para instalar el APK desde Windows PowerShell.
+- Queda registrado que en este equipo el teléfono físico se detecta de forma fiable desde PowerShell, no desde WSL.
+- Flujo correcto para móvil físico:
+  - compilar el APK desde WSL;
+  - ejecutar `adb devices`, `adb reverse tcp:8000 tcp:8000` y `adb install -r` desde Windows PowerShell;
+  - usar `scripts/install_debug_apk.ps1` para automatizar esos pasos.
+- Se investigó el error `ModuleNotFoundError: No module named 'pandas'` al ejecutar `php artisan plantaria:analytics:build`.
+- Causa: Laravel estaba usando configuración cacheada con `python3` en vez de `../analytics/.venv/bin/python`.
+- Solución validada: `php artisan config:clear` y repetir `php artisan plantaria:analytics:build`.
+
+### Validaciones ejecutadas
+
+- `analytics/.venv/bin/python -c 'import pandas as pd; print(pd.__version__)'`: devuelve `2.3.3`.
+- `php artisan config:clear`: correcto.
+- `php artisan plantaria:analytics:build`: correcto contra PostgreSQL local; generó `admin_dashboard.json`.
+
+## 2026-04-30 17:08 CEST
+
+### Cierre de números y criterio de mapa
+
+- Se actualizaron números finales visibles en documentación principal:
+  - `php artisan test`: 38 tests, 176 assertions;
+  - build Android debug: `BUILD SUCCESSFUL`;
+  - analítica pandas: `php artisan plantaria:analytics:build` correcto;
+  - perfilado rápido: `scripts/profile_app_performance.sh` correcto.
+- Se ajustó la redacción de mapa en README, README Android y memoria:
+  - para el TFC se mantiene MapLibre con `https://demotiles.maplibre.org/style.json` como estilo de demo/desarrollo documentado;
+  - no queda como decisión bloqueante de entrega;
+  - si Plantaria se publica fuera del TFC, se sustituirá por un proveedor final de tiles compatible con MapLibre o por hosting propio.
+
+## 2026-04-30 16:45 CEST
+
+### Perfilado rápido para optimización
+
+- Se añadió `scripts/profile_app_performance.sh`.
+- El script mide tiempos medios/min/max de endpoints críticos para Android:
+  - listado de mapa;
+  - búsqueda por radio PostGIS;
+  - búsqueda de planta;
+  - ficha completa;
+  - login demo;
+  - actividad de usuario autenticada.
+- También informa del tamaño del APK debug y, si hay dispositivo ADB con la app abierta, muestra memoria/render básicos.
+- `scripts/validate_project.sh` ahora valida la sintaxis del nuevo script.
+- `README.md` documenta el uso y variables principales.
+
+### Resultados base
+
+- `Mapa registros`: 16.7 ms de media.
+- `Mapa radio PostGIS`: 66.8 ms de media, con máximo de 130.3 ms.
+- `Búsqueda Lavanda`: 21.2 ms de media.
+- `Ficha completa`: 24.2 ms de media.
+- `Login demo`: 212.8 ms.
+- `Actividad usuario`: 22.6 ms de media.
+- `app-debug.apk`: 77.9 MiB.
+- No había dispositivo ADB listo para medir memoria/render de la app.
+
+### Validaciones ejecutadas
+
+- `PLANTARIA_PROFILE_RUNS=3 PLANTARIA_PROFILE_PORT=8021 ./scripts/profile_app_performance.sh`: correcto.
+- `bash -n scripts/validate_project.sh && bash -n scripts/profile_app_performance.sh && git diff --check`: correcto.
+
+## 2026-04-30 16:20 CEST
+
+### Asistente admin con consultas directas seguras
+
+- Se añadió `AdminAssistantDirectQuery` para resolver preguntas administrativas conocidas sin depender de pandas ni de SQL generado por IA.
+- `/admin/assistant` consulta primero esa capa directa y solo usa Ollama+pandas para preguntas abiertas no reconocidas.
+- Se creó `analytics/.venv`, se instalaron las dependencias de `analytics/requirements.txt` y se configuró `.env` local con `PLANTARIA_ANALYTICS_PYTHON=../analytics/.venv/bin/python`.
+- Se generó correctamente `backend/storage/app/analytics/output/admin_dashboard.json` contra PostgreSQL/PostGIS local.
+- Se cubren las preguntas:
+  - usuarios con más observaciones, contando `observations` por `author_user_id` y mostrando también observaciones de seguimiento;
+  - plantas verificadas sin `verified_scientific_name`, filtrando `plant_records.verification_status = verified`.
+- El texto del panel aclara que la consulta directa a BBDD funciona aunque todavía no exista snapshot pandas.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=AdminPanelTest`: 15 tests, 71 assertions, todo pasando.
+- `php artisan test`: 38 tests, 176 assertions, todo pasando.
+- `php artisan plantaria:analytics:build`: correcto; exportó 4 usuarios, 6 registros, 10 observaciones, 0 flags y 54 eventos.
+- `git diff --check`: correcto.
+
+## 2026-04-28 17:37 CEST
+
+### Panel admin con pandas y Ollama
+
+- Se añadió `analytics/build_admin_analytics.py`, que lee CSV con `pandas` y genera `admin_dashboard.json`.
+- Se añadió el comando `php artisan plantaria:analytics:build`:
+  - exporta `users`, `plant_records`, `observations`, `moderation_flags` y `app_events` a CSV;
+  - ejecuta el script pandas salvo que se use `--skip-python`;
+  - deja el JSON en `storage/app/analytics/output/admin_dashboard.json`.
+- El dashboard `/admin` muestra un bloque `Analitica Python + pandas` cuando existe el snapshot.
+- Un `ADMIN` puede regenerar la analítica desde el panel.
+- Se añadió `/admin/assistant` para consultas con Ollama local usando el snapshot pandas como contexto.
+- Se añadieron variables `.env`: `PLANTARIA_ANALYTICS_PYTHON`, `OLLAMA_BASE_URL` y `OLLAMA_MODEL`.
+- Se actualizaron README y guía de demo.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=AdminPanelTest`: 14 tests, 63 assertions, todo pasando.
+- `php artisan test`: 37 tests, 168 assertions, todo pasando.
+- `python3 -m py_compile analytics/build_admin_analytics.py`: correcto.
+- El comando `plantaria:analytics:build --skip-python` queda cubierto por test con sqlite; fuera de tests requiere base PostgreSQL activa.
+
+## 2026-04-28 17:24 CEST
+
+### Actividad propia en perfil
+
+- Se añadió `GET /api/me/activity` para devolver actividad reciente de la cuenta autenticada.
+- La actividad propia incluye reportes creados, observaciones/commits reales, denuncias enviadas, cambios de perfil y acciones de moderación/admin.
+- Se excluye la observación inicial automática del reporte para que no aparezca como commit duplicado.
+- Android cambia la pestaña `Usuario`: ya no recibe los registros globales del mapa y ahora muestra actividad propia con estado vacío para cuentas sin acciones.
+- Se documentó el comportamiento en la referencia API, README Android, README backend, guía de demo y contexto.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=UserActivityTest`: 4 tests, 19 assertions, todo pasando.
+- `php artisan test`: 33 tests, 157 assertions, todo pasando.
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `git diff --check`: correcto.
+
+## 2026-04-28 16:48 CEST
+
+### Roles, login y portada Android
+
+- Roles existentes confirmados: `user`, `mod` y `admin`.
+- `DatabaseSeeder` crea cuentas de prueba por rol:
+  - `plantaria_user / PlantariaUser1`;
+  - `plantaria_mod / PlantariaMod1`;
+  - `plantaria_admin / PlantariaAdmin1`.
+- Se mantiene `plantaria_demo / PlantariaDemo1` como usuario con datos demo.
+- Android añade splash/logo animado inspirado en el SVG de Plantaria.
+- La pantalla de login ya no muestra el campo técnico de URL de API.
+- Android decide URL local automáticamente:
+  - emulador con `10.0.2.2`;
+  - teléfono físico con `127.0.0.1`, pensado para `adb reverse`.
+- `scripts/install_debug_apk.sh` ejecuta `adb reverse tcp:8000 tcp:8000` automáticamente si hay ADB.
+- En perfil, el cierre de sesión queda en el menú de tres puntos.
+- Se actualizaron README, guía de demo, API docs y contexto.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=DatabaseSeederTest`: 2 tests, 9 assertions, todo pasando.
+- `php artisan test`: 29 tests, 138 assertions, todo pasando.
+- `./gradlew :app:assembleDebug`: `BUILD SUCCESSFUL`.
+- `bash -n scripts/install_debug_apk.sh`: correcto.
+- `bash -n scripts/start_mobile_stack.sh`: correcto.
+- `git diff --check`: correcto.
+- `docker compose up -d postgis`: `plantaria-postgis` en ejecución.
+- `php artisan db:seed --class=DatabaseSeeder --no-interaction`: ejecutado correctamente contra PostgreSQL local.
+- Verificación en PostgreSQL local: `plantaria_admin`, `plantaria_mod`, `plantaria_user` y `plantaria_demo` existen y están activos.
+- `adb devices`: ADB arranca, pero no hay dispositivos conectados.
+
+## 2026-04-28 16:10 CEST
+
+### Avance del panel admin web
+
+- Se reforzó el listado web de flags para mostrar el objetivo denunciado con contexto real:
+  - registros con `public_id`, nombre y enlace a la ficha de moderación;
+  - observaciones con enlace al registro relacionado y ancla de observación;
+  - usuarios con enlace a edición solo para administradores.
+- Se añadieron filtros en `/admin/flags` por texto y tipo de objetivo (`record`, `observation`, `user`), manteniendo el filtro por estado.
+- La ficha web de moderación de un registro ahora muestra flags relacionados con el propio registro y con sus observaciones.
+- Se añadieron tests feature para cubrir el contexto/filtro de flags y los flags relacionados en la ficha de registro.
+
+### Validaciones ejecutadas
+
+- `php artisan test --filter=AdminPanelTest`: 10 tests, 52 assertions, todo pasando.
+- `php artisan test`: 28 tests, 132 assertions, todo pasando.
+- `git diff --check`: correcto.
+
 ## 2026-04-27 20:23 CEST
 
 ### Metadatos del reporte en ficha

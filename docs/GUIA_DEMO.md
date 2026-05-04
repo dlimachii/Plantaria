@@ -12,6 +12,7 @@ Mostrar que Plantaria funciona como producto de punta a punta:
 - abre una ficha con fotos y observaciones;
 - crea un reporte con foto y ubicacion;
 - añade una observacion temporal a un registro;
+- revisa que la pestana `Usuario` muestra actividad propia, no todos los registros de la app;
 - un moderador o administrador revisa contenido desde el panel web.
 
 ## Preparacion
@@ -29,7 +30,22 @@ cd android
 ./gradlew :app:assembleDebug
 ```
 
-Para instalar en un telefono con depuracion USB:
+Para instalar en un telefono con depuracion USB, usar Windows PowerShell. En este entorno el movil se detecta de forma fiable desde Windows, no desde WSL:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu\home\aviddrianimachie\CEAC\Proyecto\scripts\install_debug_apk.ps1"
+```
+
+Comandos manuales equivalentes:
+
+```powershell
+$Apk = wsl wslpath -w /home/aviddrianimachie/CEAC/Proyecto/android/app/build/outputs/apk/debug/app-debug.apk
+adb devices
+adb reverse tcp:8000 tcp:8000
+adb install -r $Apk
+```
+
+El script Bash solo es alternativa si ADB ve el telefono desde WSL:
 
 ```bash
 ./scripts/install_debug_apk.sh
@@ -41,33 +57,25 @@ Si se usa USB para conectar app y backend:
 adb reverse tcp:8000 tcp:8000
 ```
 
-URL de API en la app:
-
-```text
-http://127.0.0.1:8000/api/
-```
-
-Si se usa emulador:
-
-```text
-http://10.0.2.2:8000/api/
-```
+La app ya no pide URL en la pantalla de acceso. En emulador usa `10.0.2.2`; en telefono fisico usa `127.0.0.1` con `adb reverse`.
 
 ## Usuarios demo
 
-Usuario Android:
+Cuentas de prueba por rol:
 
 ```text
-handle: plantaria_demo
-password: PlantariaDemo1
+USER  · plantaria_user  / PlantariaUser1
+MOD   · plantaria_mod   / PlantariaMod1
+ADMIN · plantaria_admin / PlantariaAdmin1
 ```
 
-Usuario admin:
+Usuario con datos demo:
 
 ```text
-handle: plantaria_admin
-password: PlantariaAdmin1
+plantaria_demo / PlantariaDemo1
 ```
+
+Las cuentas `plantaria_user`, `plantaria_mod` y `plantaria_admin` empiezan sin actividad propia de demo. Son utiles para comprobar que el perfil no lista registros globales hasta que la cuenta haga acciones reales.
 
 El admin puede variar si se cambian las variables `PLANTARIA_ADMIN_*` del `.env`.
 
@@ -82,7 +90,6 @@ Plantaria es una plataforma colaborativa para registrar plantas encontradas en u
 ### 2. Login Android
 
 - Abrir la app.
-- Confirmar o editar la URL de API.
 - Entrar con `plantaria_demo`.
 - Comprobar que la app carga sesion y registros.
 
@@ -124,7 +131,14 @@ Plantaria es una plataforma colaborativa para registrar plantas encontradas en u
 - Guardar observacion.
 - Volver a la ficha y comprobar el historial.
 
-### 8. Panel web
+### 8. Actividad de usuario
+
+- Entrar en `Usuario`.
+- Confirmar que aparecen las ultimas acciones de la cuenta actual.
+- Probar `plantaria_user` recien seedado: debe aparecer sin actividad reciente.
+- Crear un reporte o una observacion y volver a `Usuario`: debe aparecer solo esa accion propia.
+
+### 9. Panel web
 
 Abrir:
 
@@ -135,6 +149,8 @@ http://127.0.0.1:8000/admin
 Mostrar:
 
 - dashboard con analitica;
+- bloque `Analitica Python + pandas` tras ejecutar `php artisan plantaria:analytics:build`;
+- asistente `/admin/assistant` con Ollama si el servicio local esta levantado;
 - cola de moderacion;
 - detalle de registro;
 - verificar o rechazar;
@@ -164,9 +180,8 @@ Validacion local realizada el 2026-04-24 17:26 CEST:
 ### La app no conecta
 
 - Revisar que Laravel esta en marcha.
-- Revisar URL en la pantalla de acceso.
 - Para telefono por USB, repetir `adb reverse tcp:8000 tcp:8000`.
-- Para Wi-Fi, usar la IP LAN del PC.
+- Para Wi-Fi, preparar una build con la URL LAN porque el campo tecnico ya no se muestra en login.
 
 ### Las fotos no cargan
 

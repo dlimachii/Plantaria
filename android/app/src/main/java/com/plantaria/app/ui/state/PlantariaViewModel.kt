@@ -17,6 +17,7 @@ import com.plantaria.app.data.api.ApiException
 import com.plantaria.app.data.api.PlantariaApiClient
 import com.plantaria.app.data.model.PlaceSearchResult
 import com.plantaria.app.data.model.PlantRecord
+import com.plantaria.app.data.model.UserActivityItem
 import com.plantaria.app.data.session.AppSession
 import com.plantaria.app.data.session.SessionStore
 import java.io.ByteArrayOutputStream
@@ -27,7 +28,8 @@ import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 class PlantariaViewModel(application: Application) : AndroidViewModel(application) {
-    private val sessionStore = SessionStore(application, BuildConfig.PLANTARIA_API_BASE_URL)
+    private val defaultApiBaseUrl = defaultPlantariaApiBaseUrl()
+    private val sessionStore = SessionStore(application, defaultApiBaseUrl)
 
     var uiState by mutableStateOf(PlantariaUiState())
         private set
@@ -44,9 +46,11 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                 if (session.token != null && session.token != previousToken) {
                     refreshCurrentUser()
                     refreshRecords()
+                    refreshUserActivity()
                 } else if (session.token == null) {
                     uiState = uiState.copy(
                         records = emptyList(),
+                        userActivity = emptyList(),
                         recordSearchQuery = "",
                         locationQuery = "",
                         placeResults = emptyList(),
@@ -55,6 +59,22 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 }
             }
+        }
+    }
+
+    fun refreshUserActivity() {
+        val token = uiState.session.token ?: return
+
+        viewModelScope.launch {
+            uiState = uiState.copy(isUserActivityLoading = true, error = null)
+            runCatching {
+                apiClient().myActivity(token)
+            }.onSuccess { activity ->
+                uiState = uiState.copy(userActivity = activity)
+            }.onFailure { throwable ->
+                uiState = uiState.copy(error = throwable.readableMessage())
+            }
+            uiState = uiState.copy(isUserActivityLoading = false)
         }
     }
 
@@ -145,28 +165,21 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun updateApiBaseUrl(value: String) {
-        uiState = uiState.copy(
-            session = uiState.session.copy(apiBaseUrl = value),
-        )
-    }
-
-    fun login(apiBaseUrl: String, handle: String, password: String) {
+    fun login(handle: String, password: String) {
         if (handle.isBlank() || password.isBlank()) {
             uiState = uiState.copy(error = "Introduce usuario y contraseña.")
             return
         }
 
-        val normalizedApiBaseUrl = apiBaseUrl.normalizedApiBaseUrl()
+        val normalizedApiBaseUrl = uiState.session.apiBaseUrl.ifBlank { defaultApiBaseUrl }.normalizedApiBaseUrl()
         if (normalizedApiBaseUrl == null) {
-            uiState = uiState.copy(error = "Introduce una URL de API válida.")
+            uiState = uiState.copy(error = "No hay una URL de API válida configurada para esta build.")
             return
         }
 
         viewModelScope.launch {
             uiState = uiState.copy(isAuthLoading = true, error = null, message = null)
             runCatching {
-                sessionStore.saveApiBaseUrl(normalizedApiBaseUrl)
                 apiClient(normalizedApiBaseUrl).login(handle.trim(), password)
             }.onSuccess { auth ->
                 sessionStore.save(auth.token, auth.user)
@@ -179,7 +192,6 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun register(
-        apiBaseUrl: String,
         handle: String,
         displayName: String,
         email: String,
@@ -194,16 +206,15 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
 
-        val normalizedApiBaseUrl = apiBaseUrl.normalizedApiBaseUrl()
+        val normalizedApiBaseUrl = uiState.session.apiBaseUrl.ifBlank { defaultApiBaseUrl }.normalizedApiBaseUrl()
         if (normalizedApiBaseUrl == null) {
-            uiState = uiState.copy(error = "Introduce una URL de API válida.")
+            uiState = uiState.copy(error = "No hay una URL de API válida configurada para esta build.")
             return
         }
 
         viewModelScope.launch {
             uiState = uiState.copy(isAuthLoading = true, error = null, message = null)
             runCatching {
-                sessionStore.saveApiBaseUrl(normalizedApiBaseUrl)
                 apiClient(normalizedApiBaseUrl).register(
                     handle = handle.trim(),
                     displayName = displayName.trim(),
@@ -333,6 +344,7 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                     records = listOf(record) + uiState.records,
                     message = "Reporte creado: ${record.publicId}",
                 )
+                refreshUserActivity()
             }.onFailure { throwable ->
                 uiState = uiState.copy(error = throwable.readableMessage(), message = null)
             }
@@ -392,6 +404,7 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                     observationRecordPrefillId = null,
                 )
                 refreshRecords()
+                refreshUserActivity()
             }.onFailure { throwable ->
                 uiState = uiState.copy(error = throwable.readableMessage(), message = null)
             }
@@ -446,7 +459,7 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun apiClient(apiBaseUrl: String = uiState.session.apiBaseUrl): PlantariaApiClient {
-        return PlantariaApiClient(apiBaseUrl.ifBlank { BuildConfig.PLANTARIA_API_BASE_URL })
+        return PlantariaApiClient(apiBaseUrl.ifBlank { defaultApiBaseUrl })
     }
 
     private suspend fun prepareUploadPhoto(uri: Uri): SelectedPhoto = withContext(Dispatchers.IO) {
@@ -498,6 +511,7 @@ data class PlantariaUiState(
     val authChecked: Boolean = false,
     val session: AppSession = AppSession(),
     val records: List<PlantRecord> = emptyList(),
+    val userActivity: List<UserActivityItem> = emptyList(),
     val recordSearchQuery: String = "",
     val locationQuery: String = "",
     val placeResults: List<PlaceSearchResult> = emptyList(),
@@ -507,6 +521,7 @@ data class PlantariaUiState(
     val observationRecordPrefillVersion: Int = 0,
     val isAuthLoading: Boolean = false,
     val isRecordsLoading: Boolean = false,
+    val isUserActivityLoading: Boolean = false,
     val isPlaceSearchLoading: Boolean = false,
     val isRecordDetailLoading: Boolean = false,
     val isCreateRecordLoading: Boolean = false,
@@ -539,6 +554,34 @@ private fun String.toCoordinateSearchResult(): PlaceSearchResult? {
 
 private fun PlaceSearchResult.shortLabel(): String {
     return displayName.substringBefore(',').trim().ifBlank { displayName }
+}
+
+private fun defaultPlantariaApiBaseUrl(): String {
+    return if (isProbablyEmulator()) {
+        BuildConfig.PLANTARIA_API_BASE_URL
+    } else {
+        "http://127.0.0.1:8000/api/"
+    }
+}
+
+private fun isProbablyEmulator(): Boolean {
+    val fingerprint = Build.FINGERPRINT.lowercase()
+    val model = Build.MODEL.lowercase()
+    val manufacturer = Build.MANUFACTURER.lowercase()
+    val brand = Build.BRAND.lowercase()
+    val device = Build.DEVICE.lowercase()
+    val product = Build.PRODUCT.lowercase()
+
+    return fingerprint.startsWith("generic") ||
+        fingerprint.contains("vbox") ||
+        fingerprint.contains("test-keys") ||
+        model.contains("sdk") ||
+        model.contains("emulator") ||
+        model.contains("android sdk built for") ||
+        manufacturer.contains("genymotion") ||
+        (brand.startsWith("generic") && device.startsWith("generic")) ||
+        product.contains("sdk") ||
+        product.contains("emulator")
 }
 
 private fun ContentResolver.compressPlantariaPhoto(uri: Uri): SelectedPhoto {

@@ -49,6 +49,11 @@ Capacidades ya implementadas:
 - actualización 2026-04-24 17:34 CEST: se añade `docs/API.md` como referencia práctica de endpoints y se sincroniza la metadata Composer del backend con Plantaria.
 - actualización 2026-04-24 17:41 CEST: se añade middleware `active.user` para bloquear rutas autenticadas a cuentas no activas y tests de autorización API admin.
 - actualización 2026-04-24 17:44 CEST: se añade script de backup `scripts/package_for_onedrive.sh`, guía `docs/BACKUP_ONEDRIVE.md` y se crea un paquete real en OneDrive CEAC.
+- actualización 2026-04-28 16:10 CEST: el panel web de flags muestra contexto del objetivo denunciado, permite filtrar por tipo y búsqueda, enlaza a registros/usuarios cuando procede y la ficha de moderación enseña flags relacionados con el registro y sus observaciones.
+- actualización 2026-04-28 16:48 CEST: `DatabaseSeeder` crea cuentas de prueba por rol (`plantaria_user`, `plantaria_mod`, `plantaria_admin`) y mantiene `plantaria_demo` para datos demo.
+- actualización 2026-04-28 16:48 CEST: Android añade splash/logo animado inspirado en el logo SVG, oculta el campo técnico de URL en login, decide URL local por emulador/teléfono y mueve cierre de sesión al menú de perfil.
+- actualización 2026-04-28 17:24 CEST: el backend añade `/api/me/activity` y Android cambia `Usuario` para mostrar actividad propia reciente, no registros globales cargados en el mapa.
+- actualización 2026-04-28 17:37 CEST: el panel web integra una capa Python+pandas real: Laravel exporta CSV, `analytics/build_admin_analytics.py` calcula un JSON y el dashboard lo muestra; `/admin/assistant` queda preparado para consultas con Ollama local.
 
 ### Dominio implementado
 
@@ -92,7 +97,7 @@ Su función es levantar la base PostgreSQL/PostGIS real del proyecto en desarrol
 
 Ya existe un proyecto Android generado en `android/`.
 
-Actualización: 2026-04-23 19:50 CEST.
+Actualización: 2026-04-28 17:24 CEST.
 
 Estado actual:
 
@@ -106,7 +111,7 @@ Estado actual:
 - navegación inferior base `Mapa / Acciones / Usuario`;
 - pantalla de mapa con MapLibre Native Android y estilo OSM demo;
 - pantalla de acciones para crear reporte o actualizar registro;
-- pantalla de usuario con perfil y registros cargados;
+- pantalla de usuario con perfil, rol, cierre de sesión y actividad reciente propia;
 - capa de API con `HttpURLConnection`;
 - login y registro contra Laravel;
 - persistencia de token con DataStore;
@@ -129,21 +134,29 @@ Estado actual:
 - recentrado directo del mapa al introducir coordenadas `lat, lon`;
 - separación explícita entre búsqueda de registros por planta/ID y foco del mapa por zona o coordenadas.
 - panel web con dashboard visual de analítica sin depender de JavaScript ni librerías de gráficos externas.
+- bloque de dashboard calculado con Python+pandas desde snapshots CSV exportados por Laravel.
+- asistente admin opcional con Ollama local alimentado por el snapshot pandas.
+- ajuste 2026-04-30 16:20 CEST: el asistente admin intenta antes consultas directas seguras con Query Builder sobre tablas del dominio Plantaria; para preguntas conocidas no depende del snapshot pandas.
+- entorno local 2026-04-30 16:20 CEST: `analytics/.venv` instalado, `.env` apunta a ese Python y `admin_dashboard.json` generado correctamente.
 - pantallas Android de acceso, acciones y usuario con estados de ayuda, carga y vacío más claros para demo.
 - estilo de mapa Android configurable por `BuildConfig` en lugar de constante fija.
 - scripts `scripts/start_mobile_stack.sh` y `scripts/install_debug_apk.sh` para reducir el coste operativo de prueba.
+- script `scripts/profile_app_performance.sh` añadido el 2026-04-30 16:45 CEST para medir tiempos de endpoints usados por Android, tamaño del APK debug y métricas básicas ADB si hay dispositivo.
 - preparación/compresión de fotos en Android antes de subirlas para tolerar mejor imágenes reales de móvil.
 - preview de pin más compacto, cerrable y sin bloquear los controles principales del mapa.
+- actividad propia en perfil desde `/api/me/activity`: reportes creados por la cuenta, commits/observaciones de actualización, flags enviados y acciones registradas de moderación/admin.
 
 Validación realizada:
 
 - `./gradlew :app:assembleDebug` ejecutado correctamente;
-- `php artisan test` ejecutado correctamente con 24 tests y 113 assertions;
+- `php artisan test` ejecutado correctamente con 38 tests y 176 assertions;
+- `php artisan plantaria:analytics:build` ejecutado correctamente contra PostgreSQL/PostGIS local usando `analytics/.venv`;
+- `scripts/profile_app_performance.sh` ejecutado correctamente con línea base API/APK;
 - APK debug generado en `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 Pendiente:
 
-- revalidar en móvil físico el APK reconstruido tras estos ajustes de subida y UX.
+- revalidar en móvil físico el APK actual con flujo completo y repetir perfilado con ADB para memoria/render real.
 
 ## Visión funcional
 

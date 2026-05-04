@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Web;
 
 use App\Enums\EventType;
+use App\Enums\FlagTargetType;
 use App\Enums\PlantCondition;
 use App\Enums\UserRole;
 use App\Enums\VerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateManagedPlantRecordRequest;
 use App\Models\AppEvent;
+use App\Models\ModerationFlag;
 use App\Models\PlantRecord;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\User;
 use Illuminate\View\View;
 
 class ModerationPanelController extends Controller
@@ -66,8 +68,30 @@ class ModerationPanelController extends Controller
             ->where('public_id', $publicId)
             ->firstOrFail();
 
+        $observationIds = $record->observations->pluck('id');
+        $relatedFlags = ModerationFlag::query()
+            ->with(['reporter', 'resolver', 'observation'])
+            ->where(function ($query) use ($record, $observationIds): void {
+                $query->where(function ($recordQuery) use ($record): void {
+                    $recordQuery
+                        ->where('target_type', FlagTargetType::RECORD->value)
+                        ->where('target_id', $record->id);
+                });
+
+                if ($observationIds->isNotEmpty()) {
+                    $query->orWhere(function ($observationQuery) use ($observationIds): void {
+                        $observationQuery
+                            ->where('target_type', FlagTargetType::OBSERVATION->value)
+                            ->whereIn('target_id', $observationIds);
+                    });
+                }
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
         return view('admin.moderation.show', [
             'record' => $record,
+            'relatedFlags' => $relatedFlags,
             'conditions' => PlantCondition::cases(),
             'statuses' => VerificationStatus::cases(),
         ]);

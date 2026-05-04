@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FlagController;
 use App\Http\Controllers\Api\GeocodingController;
+use App\Http\Controllers\Api\MyActivityController;
 use App\Http\Controllers\Api\ObservationController;
 use App\Http\Controllers\Api\PhotoUploadController;
 use App\Http\Controllers\Api\PlantRecordController;
@@ -25,6 +26,7 @@ Route::get('/geocoding/search', [GeocodingController::class, 'search']);
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/me/activity', MyActivityController::class);
 
     Route::patch('/profile', [ProfileController::class, 'update']);
 

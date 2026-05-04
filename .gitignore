@@ -8,6 +8,9 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+~$*.docx
+~$*.xlsx
+~$*.pptx
 
 # Environment and secrets
 .env
