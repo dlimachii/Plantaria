@@ -25,7 +25,7 @@ class AdminSessionController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $login = strtolower(trim($credentials['login']));
+        $login = strtolower(trim(preg_replace('/[\x00-\x1F\x7F]/u', '', $credentials['login']) ?? $credentials['login']));
         $user = User::query()
             ->where('handle', $login)
             ->orWhere('email', $login)

@@ -93,7 +93,7 @@ class AdminAssistantDirectQuery
             ->get();
 
         if ($rows->isEmpty()) {
-            return 'Usuarios con mas observaciones: no hay observaciones registradas todavia.';
+            return 'Usuarios con más observaciones: no hay observaciones registradas todavía.';
         }
 
         $lines = $rows
@@ -107,13 +107,13 @@ class AdminAssistantDirectQuery
                     $index + 1,
                     $row->display_name,
                     $row->handle,
-                    $this->plural($total, 'observacion', 'observaciones'),
+                    $this->plural($total, 'observación', 'observaciones'),
                     $followup,
                 );
             })
             ->implode("\n");
 
-        return "Usuarios con mas observaciones:\n{$lines}\nNota: el total cuenta todas las filas de observations; la cifra de seguimiento excluye la observacion inicial automatica de cada reporte.";
+        return "Usuarios con más observaciones:\n{$lines}\nNota: el total cuenta todas las filas de observations; la cifra de seguimiento excluye la observación inicial automática de cada reporte.";
     }
 
     private function verifiedPlantsWithoutScientificName(): string
@@ -135,7 +135,7 @@ class AdminAssistantDirectQuery
             ->get();
 
         if ($rows->isEmpty()) {
-            return 'Plantas verificadas sin nombre cientifico: no hay registros verificados con el nombre cientifico vacio.';
+            return 'Plantas verificadas sin nombre científico: no hay registros verificados con el nombre científico vacío.';
         }
 
         $lines = $rows
@@ -153,7 +153,7 @@ class AdminAssistantDirectQuery
             })
             ->implode("\n");
 
-        return "Plantas verificadas sin nombre cientifico:\n{$lines}";
+        return "Plantas verificadas sin nombre científico:\n{$lines}";
     }
 
     private function plural(int $count, string $singular, string $plural): string

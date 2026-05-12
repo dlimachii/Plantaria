@@ -3,11 +3,52 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.dokka")
 }
 
 android {
     namespace = "com.plantaria.app"
     compileSdk = 36
+
+    flavorDimensions += "install"
+    productFlavors {
+        create("prod") {
+            dimension = "install"
+            resValue("string", "app_name", "Plantaria")
+            buildConfigField("boolean", "PLANTARIA_MAP_STYLE_PICKER_ENABLED", "true")
+            buildConfigField(
+                "String",
+                "PLANTARIA_API_BASE_URL",
+                "\"https://api.dlimachii.com/api/\"",
+            )
+        }
+        create("demoA") {
+            dimension = "install"
+            applicationIdSuffix = ".demoa"
+            resValue("string", "app_name", "Plantaria Demo A")
+        }
+        create("demoB") {
+            dimension = "install"
+            applicationIdSuffix = ".demob"
+            resValue("string", "app_name", "Plantaria Demo B")
+        }
+        create("demoC") {
+            dimension = "install"
+            applicationIdSuffix = ".democ"
+            resValue("string", "app_name", "Plantaria Demo C")
+        }
+        create("demoPJ") {
+            dimension = "install"
+            applicationIdSuffix = ".demopj"
+            resValue("string", "app_name", "Plantaria")
+            buildConfigField("boolean", "PLANTARIA_MAP_STYLE_PICKER_ENABLED", "true")
+            buildConfigField(
+                "String",
+                "PLANTARIA_API_BASE_URL",
+                "\"https://api.dlimachii.com/api/\"",
+            )
+        }
+    }
 
     defaultConfig {
         applicationId = "com.plantaria.app"
@@ -18,18 +59,29 @@ android {
         buildConfigField(
             "String",
             "PLANTARIA_API_BASE_URL",
-            "\"http://10.0.2.2:8000/api/\"",
+            "\"https://api.dlimachii.com/api/\"",
         )
         buildConfigField(
             "String",
             "PLANTARIA_MAP_STYLE_URL",
             "\"https://demotiles.maplibre.org/style.json\"",
         )
+        buildConfigField(
+            "String",
+            "PLANTARIA_BOOTSTRAP_CONFIG_URL",
+            "\"\"",
+        )
+        buildConfigField(
+            "boolean",
+            "PLANTARIA_MAP_STYLE_PICKER_ENABLED",
+            "false",
+        )
     }
 
     buildFeatures {
         buildConfig = true
         compose = true
+        resValues = true
     }
 
     compileOptions {
@@ -62,7 +114,26 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     implementation("androidx.navigation:navigation-compose:2.9.7")
     implementation("org.maplibre.gl:android-sdk:13.0.2")
+    dokkaPlugin("org.jetbrains.dokka:android-documentation-plugin:2.2.0")
 
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-tooling")
+}
+
+dokka {
+    moduleName.set("Plantaria Android")
+
+    dokkaPublications.html {
+        outputDirectory.set(layout.buildDirectory.dir("documentation/html"))
+        includes.from("dokka/module.md")
+    }
+
+    dokkaSourceSets.configureEach {
+        displayName.set("androidApp")
+        includes.from("dokka/packages.md")
+        skipEmptyPackages.set(true)
+        reportUndocumented.set(false)
+        sourceRoots.from(file("src/main/java"))
+        suppress.set(name != "prodRelease")
+    }
 }

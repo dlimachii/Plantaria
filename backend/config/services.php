@@ -44,9 +44,24 @@ return [
         'python_bin' => env('PLANTARIA_ANALYTICS_PYTHON', 'python3'),
     ],
 
+    'plantaria_footprint' => [
+        'carbon_intensity_g_per_kwh' => env('PLANTARIA_CARBON_INTENSITY_G_PER_KWH', 233),
+        'idle_watts' => env('PLANTARIA_SERVER_IDLE_WATTS', 8),
+        'cpu_peak_extra_watts' => env('PLANTARIA_SERVER_CPU_PEAK_EXTRA_WATTS', 32),
+        'memory_watts_per_gb' => env('PLANTARIA_SERVER_MEMORY_WATTS_PER_GB', 0.35),
+    ],
+
     'ollama' => [
+        'enabled' => env('OLLAMA_ENABLED', true),
         'base_url' => env('OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
         'model' => env('OLLAMA_MODEL', 'llama3.2:1b'),
+    ],
+
+    'admin_sql' => [
+        'enabled' => env('PLANTARIA_ADMIN_SQL_READONLY_ENABLED', true),
+        'max_rows' => env('PLANTARIA_ADMIN_SQL_MAX_ROWS', 200),
+        'max_length' => env('PLANTARIA_ADMIN_SQL_MAX_LENGTH', 4000),
+        'timeout_ms' => env('PLANTARIA_ADMIN_SQL_TIMEOUT_MS', 4000),
     ],
 
 ];

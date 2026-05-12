@@ -11,10 +11,12 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('plantaria:analytics:build {--skip-python : Export CSV datasets without running pandas}', function (): int {
+    $analyticsDir = storage_path('app/analytics');
     $inputDir = storage_path('app/analytics/input');
     $outputDir = storage_path('app/analytics/output');
     $outputPath = $outputDir . DIRECTORY_SEPARATOR . 'admin_dashboard.json';
 
+    File::ensureDirectoryExists($analyticsDir);
     File::ensureDirectoryExists($inputDir);
     File::ensureDirectoryExists($outputDir);
 

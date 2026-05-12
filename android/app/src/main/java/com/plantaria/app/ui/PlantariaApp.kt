@@ -39,6 +39,12 @@ import com.plantaria.app.ui.state.PlantariaUiState
 import com.plantaria.app.ui.state.PlantariaViewModel
 import kotlinx.coroutines.delay
 
+/**
+ * Punto de entrada Compose de la aplicación.
+ *
+ * Decide si mostrar splash, autenticación o navegación autenticada a partir del estado
+ * expuesto por [PlantariaViewModel].
+ */
 @Composable
 fun PlantariaApp(
     viewModel: PlantariaViewModel = viewModel(),
@@ -63,6 +69,8 @@ fun PlantariaApp(
             isLoading = uiState.isAuthLoading,
             message = uiState.message,
             error = uiState.error,
+            apiBaseUrl = uiState.session.apiBaseUrl,
+            onApiBaseUrlChange = viewModel::setApiBaseUrl,
             onLogin = viewModel::login,
             onRegister = viewModel::register,
         )
@@ -159,6 +167,8 @@ private fun AuthenticatedPlantariaApp(
                     searchMessage = uiState.mapSearchMessage,
                     error = uiState.error,
                     recordDetailError = uiState.recordDetailError,
+                    isTourSeen = uiState.session.isMapTourSeen,
+                    onTourSeen = viewModel::markMapTourSeen,
                     onRecordSearchQueryChange = viewModel::updateRecordSearchQuery,
                     onRecordSearchSubmit = viewModel::submitRecordSearch,
                     onClearRecordSearch = viewModel::clearRecordSearch,

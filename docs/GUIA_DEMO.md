@@ -27,19 +27,43 @@ En otro terminal:
 
 ```bash
 cd android
-./gradlew :app:assembleDebug
+./gradlew :app:assembleProdDebug
 ```
+
+### Opcional: demo multi-APK (A/B/C en el mismo movil)
+
+Esto permite tener 3 apps instaladas a la vez (sesiones separadas) y evitar desloguear/reloguear durante la presentacion.
+
+1) Compilar las 3 APKs:
+
+```bash
+./scripts/build_demo_apks.sh
+```
+
+2) Instalar en el movil (recomendado desde Windows PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\TuDistro\home\TU_USUARIO\CEAC\Proyecto\scripts\install_demo_apks.ps1"
+```
+
+Si tu distro WSL no se llama `TuDistro`, cambia el nombre en esa ruta.
+
+Quedaran instaladas como:
+
+- `Plantaria Demo A`
+- `Plantaria Demo B`
+- `Plantaria Demo C`
 
 Para instalar en un telefono con depuracion USB, usar Windows PowerShell. En este entorno el movil se detecta de forma fiable desde Windows, no desde WSL:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu\home\aviddrianimachie\CEAC\Proyecto\scripts\install_debug_apk.ps1"
+powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\TuDistro\home\TU_USUARIO\CEAC\Proyecto\scripts\install_debug_apk.ps1"
 ```
 
 Comandos manuales equivalentes:
 
 ```powershell
-$Apk = wsl wslpath -w /home/aviddrianimachie/CEAC/Proyecto/android/app/build/outputs/apk/debug/app-debug.apk
+$Apk = wsl wslpath -w /home/TU_USUARIO/CEAC/Proyecto/android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
 adb devices
 adb reverse tcp:8000 tcp:8000
 adb install -r $Apk
@@ -57,23 +81,52 @@ Si se usa USB para conectar app y backend:
 adb reverse tcp:8000 tcp:8000
 ```
 
-La app ya no pide URL en la pantalla de acceso. En emulador usa `10.0.2.2`; en telefono fisico usa `127.0.0.1` con `adb reverse`.
+La app permite configurar el servidor (API) en la pantalla de acceso. En la build de demo puede venir ya configurada a `https://api.dlimachii.com/api/`. Si se trabaja en local, usa `adb reverse` o un tunel HTTPS y guarda la URL desde login.
+
+### Demo sin hosting (Cloudflare Quick Tunnel)
+
+Si se necesita que varios dispositivos fuera de tu red accedan a la API durante la demo, se puede exponer el backend local con un tunel temporal (sin dominio).
+
+Opcion recomendada (1 comando):
+
+```bash
+bash ./scripts/start_demo_tunnel.sh
+```
+
+Alternativa manual:
+
+1. Arranca backend + BBDD como siempre (por ejemplo `./scripts/start_mobile_stack.sh`).
+2. Crea el tunel:
+
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
+
+`cloudflared` imprimira una URL `https://....trycloudflare.com`.
+
+3. En la app Android, en login, pega esa URL en `Servidor (API)` y pulsa `Guardar servidor`.
+
+#### Opcional: bootstrap remoto
+
+El cliente mantiene soporte para configurar el servidor manualmente desde login. Si mas adelante quieres un bootstrap remoto por JSON, conviene volver a habilitar `PLANTARIA_BOOTSTRAP_CONFIG_URL` en la build y servir un documento publico con `api_base_url`.
 
 ## Usuarios demo
 
 Cuentas de prueba por rol:
 
 ```text
-USER  · plantaria_user  / PlantariaUser1
-MOD   · plantaria_mod   / PlantariaMod1
-ADMIN · plantaria_admin / PlantariaAdmin1
+USER  · plantaria_user
+MOD   · plantaria_mod
+ADMIN · plantaria_admin
 ```
 
 Usuario con datos demo:
 
 ```text
-plantaria_demo / PlantariaDemo1
+plantaria_demo
 ```
+
+Las contraseñas de demo se configuran en `backend/.env` (no se publican en el repo).
 
 Las cuentas `plantaria_user`, `plantaria_mod` y `plantaria_admin` empiezan sin actividad propia de demo. Son utiles para comprobar que el perfil no lista registros globales hasta que la cuenta haga acciones reales.
 
@@ -143,7 +196,7 @@ Plantaria es una plataforma colaborativa para registrar plantas encontradas en u
 Abrir:
 
 ```text
-http://127.0.0.1:8000/admin
+https://api.dlimachii.com/admin
 ```
 
 Mostrar:

@@ -18,9 +18,17 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+/**
+ * Cliente HTTP mínimo de Plantaria para Android.
+ *
+ * Mantiene el contrato con la API Laravel sin añadir más dependencias de red de las necesarias
+ * para el MVP. Centraliza autenticación, lectura de registros, subida de fotos y operaciones
+ * principales de usuario.
+ */
 class PlantariaApiClient(
     private val baseUrl: String,
 ) {
+    /** Autentica un usuario y devuelve token + perfil básico. */
     suspend fun login(
         handle: String,
         password: String,
@@ -39,6 +47,7 @@ class PlantariaApiClient(
         return response.toAuthResult()
     }
 
+    /** Registra un usuario nuevo y devuelve token + perfil inicial. */
     suspend fun register(
         handle: String,
         displayName: String,
@@ -70,6 +79,7 @@ class PlantariaApiClient(
         return response.toAuthResult()
     }
 
+    /** Recupera el perfil actual asociado al token. */
     suspend fun me(token: String): ApiUser {
         val response = request(
             path = "auth/me",
@@ -80,6 +90,7 @@ class PlantariaApiClient(
         return response.getJSONObject("user").toApiUser()
     }
 
+    /** Invalida el token actual en el backend. */
     suspend fun logout(token: String) {
         request(
             path = "auth/logout",
@@ -88,6 +99,7 @@ class PlantariaApiClient(
         )
     }
 
+    /** Obtiene la actividad propia del usuario autenticado. */
     suspend fun myActivity(token: String): List<UserActivityItem> {
         val response = request(
             path = "me/activity?limit=30",
@@ -98,6 +110,7 @@ class PlantariaApiClient(
         return response.getJSONArray("data").toUserActivityItems()
     }
 
+    /** Lista registros de plantas, opcionalmente filtrados por texto. */
     suspend fun records(query: String? = null): List<PlantRecord> {
         val encodedQuery = query
             ?.trim()
@@ -117,6 +130,7 @@ class PlantariaApiClient(
         return response.getJSONArray("data").toPlantRecords()
     }
 
+    /** Carga el detalle de un registro concreto usando su `publicId`. */
     suspend fun record(publicId: String): PlantRecord {
         val response = request(
             path = "records/${URLEncoder.encode(publicId, Charsets.UTF_8.name())}",
@@ -126,6 +140,7 @@ class PlantariaApiClient(
         return response.getJSONObject("data").toPlantRecord()
     }
 
+    /** Busca lugares contra el proxy backend de geocodificación. */
     suspend fun searchPlaces(
         query: String,
         limit: Int = 5,
@@ -139,6 +154,7 @@ class PlantariaApiClient(
         return response.getJSONArray("data").toPlaceSearchResults()
     }
 
+    /** Crea un nuevo reporte principal de planta. */
     suspend fun createRecord(
         token: String,
         provisionalCommonName: String,
@@ -165,6 +181,7 @@ class PlantariaApiClient(
         return response.getJSONObject("data").toPlantRecord()
     }
 
+    /** Añade una observación temporal a un registro existente. */
     suspend fun createObservation(
         token: String,
         recordPublicId: String,
@@ -201,6 +218,7 @@ class PlantariaApiClient(
         )
     }
 
+    /** Sube una imagen al backend y devuelve el `path` persistido por Laravel. */
     suspend fun uploadPhoto(
         token: String,
         bytes: ByteArray,

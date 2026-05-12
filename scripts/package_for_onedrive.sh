@@ -6,13 +6,7 @@ TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
 PACKAGE_NAME="plantaria-backup-$TIMESTAMP"
 
 DEFAULT_DEST=""
-if [[ -d "/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP" ]]; then
-  DEFAULT_DEST="/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups"
-elif [[ -d "/mnt/c/Users/DavidAdrianLimachiPe/OneDrive" ]]; then
-  DEFAULT_DEST="/mnt/c/Users/DavidAdrianLimachiPe/OneDrive/PlantariaBackups"
-else
-  DEFAULT_DEST="$ROOT_DIR/backups"
-fi
+DEFAULT_DEST="$ROOT_DIR/backups"
 
 DEST_DIR="${1:-${PLANTARIA_BACKUP_DIR:-$DEFAULT_DEST}}"
 PACKAGE_DIR="$DEST_DIR/$PACKAGE_NAME"
@@ -106,7 +100,7 @@ fi
 if [[ "${INCLUDE_DB_DUMP:-0}" == "1" ]]; then
   if command -v pg_dump >/dev/null 2>&1; then
     echo "==> Exportando dump PostgreSQL"
-    PGPASSWORD="${PLANTARIA_DB_PASSWORD:-plantaria}" pg_dump \
+    PGPASSWORD="${PLANTARIA_DB_PASSWORD:-}" pg_dump \
       -h "${PLANTARIA_DB_HOST:-127.0.0.1}" \
       -p "${PLANTARIA_DB_PORT:-5432}" \
       -U "${PLANTARIA_DB_USER:-plantaria}" \

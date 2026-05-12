@@ -161,7 +161,7 @@ Revalidación del 2026-04-24 17:26 CEST:
 - PostgreSQL/PostGIS local: `docker compose ps` muestra `plantaria-postgis` healthy; `php artisan migrate --seed --no-interaction` correcto; endpoint `/api/records?latitude=41.3851&longitude=2.1734&radius_km=8&limit=10` probado contra Laravel local y devuelve registros con `distance_km`.
 - `./scripts/validate_project.sh`: correcto, incluyendo backend, Android, sintaxis de scripts y smoke PostGIS.
 - `composer validate --no-check-publish`: correcto tras sincronizar `composer.lock`.
-- `./scripts/package_for_onedrive.sh`: paquete creado en `/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups/plantaria-backup-20260424-174446`; `sha256sum -c SHA256SUMS` correcto.
+- `./scripts/package_for_onedrive.sh`: paquete creado en `/ruta/a/PlantariaBackups/plantaria-backup-20260424-174446`; `sha256sum -c SHA256SUMS` correcto.
 
 Revalidación del 2026-04-27 16:23 CEST:
 

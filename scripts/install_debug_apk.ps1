@@ -6,9 +6,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $rootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
+$flavor = $env:PLANTARIA_ANDROID_FLAVOR
+if ([string]::IsNullOrWhiteSpace($flavor)) {
+    $flavor = "prod"
+}
 
 if ([string]::IsNullOrWhiteSpace($ApkPath)) {
-    $ApkPath = Join-Path $rootDir "android\app\build\outputs\apk\debug\app-debug.apk"
+    $ApkPath = Join-Path $rootDir "android\app\build\outputs\apk\$flavor\debug\app-$flavor-debug.apk"
 }
 
 if ([string]::IsNullOrWhiteSpace($AdbPath)) {
@@ -28,7 +32,8 @@ if ([string]::IsNullOrWhiteSpace($AdbPath) -or -not (Test-Path $AdbPath)) {
 }
 
 if (-not (Test-Path $ApkPath)) {
-    throw "No existe el APK: $ApkPath. Compilalo antes desde WSL: cd android && ./gradlew :app:assembleDebug"
+    $flavorTask = $flavor.Substring(0, 1).ToUpper() + $flavor.Substring(1)
+    throw "No existe el APK: $ApkPath. Compilalo antes desde WSL: cd android && ./gradlew :app:assemble${flavorTask}Debug"
 }
 
 Write-Host "==> Dispositivos ADB"
@@ -46,4 +51,4 @@ Write-Host "==> Instalando APK"
 & $AdbPath install -r $ApkPath
 
 Write-Host "APK instalado desde: $ApkPath"
-Write-Host "El movil queda preparado para usar http://127.0.0.1:8000/api/ mediante adb reverse."
+Write-Host "adb reverse queda preparado para backend local, pero la app solo lo usara si guardas http://127.0.0.1:8000/api/ como servidor."

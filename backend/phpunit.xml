@@ -33,5 +33,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PLANTARIA_ADMIN_PASSWORD" value="TestAdminPass1!"/>
+        <env name="PLANTARIA_DEMO_PASSWORD" value="TestDemoPass1!"/>
+        <env name="PLANTARIA_USER_PASSWORD" value="TestUserPass1!"/>
+        <env name="PLANTARIA_MOD_PASSWORD" value="TestModPass1!"/>
     </php>
 </phpunit>

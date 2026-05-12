@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends FormRequest
 {
+    use SanitizesInput;
+
     public function authorize(): bool
     {
         return true;
@@ -35,5 +38,18 @@ class RegisterRequest extends FormRequest
             'default_lng' => ['nullable', 'numeric', 'between:-180,180'],
             'device_name' => ['nullable', 'string', 'max:100'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->sanitizedOnly([
+            'handle' => fn (mixed $value): ?string => $this->sanitizeHandle($value),
+            'display_name' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'email' => fn (mixed $value): ?string => $this->sanitizeEmail($value),
+            'country' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'province' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'city' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'device_name' => fn (mixed $value): ?string => $this->sanitizeText($value),
+        ]));
     }
 }

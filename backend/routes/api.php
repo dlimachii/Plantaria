@@ -14,14 +14,14 @@ use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function (): void {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-auth');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:api-auth');
 });
 
 Route::get('/records', [PlantRecordController::class, 'index']);
 Route::get('/records/{publicId}', [PlantRecordController::class, 'show']);
 Route::get('/profiles/{handle}', [ProfileController::class, 'show']);
-Route::get('/geocoding/search', [GeocodingController::class, 'search']);
+Route::get('/geocoding/search', [GeocodingController::class, 'search'])->middleware('throttle:api-geocoding');
 
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -30,7 +30,7 @@ Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
 
     Route::patch('/profile', [ProfileController::class, 'update']);
 
-    Route::post('/uploads/photos', [PhotoUploadController::class, 'store']);
+    Route::post('/uploads/photos', [PhotoUploadController::class, 'store'])->middleware('throttle:api-uploads');
 
     Route::post('/records', [PlantRecordController::class, 'store']);
     Route::post('/records/{publicId}/observations', [ObservationController::class, 'store']);

@@ -4,12 +4,15 @@ namespace App\Http\Requests;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateManagedUserRequest extends FormRequest
 {
+    use SanitizesInput;
+
     public function authorize(): bool
     {
         return true;
@@ -42,5 +45,17 @@ class UpdateManagedUserRequest extends FormRequest
             'role' => ['sometimes', Rule::enum(UserRole::class)],
             'status' => ['sometimes', Rule::enum(UserStatus::class)],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->sanitizedOnly([
+            'handle' => fn (mixed $value): ?string => $this->sanitizeHandle($value),
+            'display_name' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'photo_path' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'country' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'province' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'city' => fn (mixed $value): ?string => $this->sanitizeText($value),
+        ]));
     }
 }

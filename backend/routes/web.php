@@ -17,7 +17,7 @@ Route::get('/login', fn () => redirect()->route('admin.login'))->name('login');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/admin/login', [AdminSessionController::class, 'create'])->name('admin.login');
-    Route::post('/admin/login', [AdminSessionController::class, 'store'])->name('admin.login.store');
+    Route::post('/admin/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login')->name('admin.login.store');
 });
 
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
@@ -25,7 +25,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
     Route::get('/', AdminDashboardController::class)->name('dashboard');
     Route::post('/analytics/rebuild', [AdminAnalyticsController::class, 'rebuild'])->name('analytics.rebuild');
     Route::get('/assistant', [AdminAssistantController::class, 'index'])->name('assistant.index');
-    Route::post('/assistant', [AdminAssistantController::class, 'ask'])->name('assistant.ask');
+    Route::post('/assistant', [AdminAssistantController::class, 'ask'])->middleware('throttle:admin-assistant')->name('assistant.ask');
+    Route::post('/assistant/sql', [AdminAssistantController::class, 'runSql'])->middleware('throttle:admin-assistant')->name('assistant.sql');
 
     Route::prefix('moderation')->name('moderation.')->group(function (): void {
         Route::get('/pending', [ModerationPanelController::class, 'pending'])->name('pending');

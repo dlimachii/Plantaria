@@ -39,9 +39,9 @@ class DatabaseSeederTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertDemoUser('plantaria_user', 'PlantariaUser1', UserRole::USER);
-        $this->assertDemoUser('plantaria_mod', 'PlantariaMod1', UserRole::MOD);
-        $this->assertDemoUser('plantaria_admin', 'PlantariaAdmin1', UserRole::ADMIN);
+        $this->assertDemoUser('plantaria_user', (string) env('PLANTARIA_USER_PASSWORD'), UserRole::USER);
+        $this->assertDemoUser('plantaria_mod', (string) env('PLANTARIA_MOD_PASSWORD'), UserRole::MOD);
+        $this->assertDemoUser('plantaria_admin', (string) env('PLANTARIA_ADMIN_PASSWORD'), UserRole::ADMIN);
     }
 
     private function assertDemoUser(string $handle, string $password, UserRole $role): void

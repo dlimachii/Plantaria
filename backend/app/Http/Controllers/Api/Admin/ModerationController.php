@@ -88,6 +88,19 @@ class ModerationController extends Controller
             'verification_status' => $status->value,
         ]);
 
+        $authorId = $record->created_by_user_id;
+        if ($authorId !== null && $authorId !== $moderator->id) {
+            $author = User::query()->find($authorId);
+            if ($author) {
+                AppEvent::record(EventType::RECORD_VERIFIED, $author, $record, metadata: [
+                    'verification_status' => $status->value,
+                    'source' => 'api_admin',
+                    'actor_handle' => $moderator->handle,
+                    'actor_role' => $moderator->role?->value,
+                ]);
+            }
+        }
+
         return response()->json([
             'data' => [
                 'public_id' => $record->public_id,
@@ -180,7 +193,7 @@ class ModerationController extends Controller
         abort_unless(
             $user && in_array($user->role, [UserRole::MOD, UserRole::ADMIN], true),
             403,
-            'Solo moderacion.'
+            'Solo moderación.'
         );
 
         return $user;

@@ -86,12 +86,12 @@ fun ActionsScreen(
     var description by rememberSaveable { mutableStateOf("") }
     var selectedPhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var selectedObservationPhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var latitude by rememberSaveable { mutableStateOf("41.3874") }
-    var longitude by rememberSaveable { mutableStateOf("2.1686") }
+    var latitude by rememberSaveable { mutableStateOf("") }
+    var longitude by rememberSaveable { mutableStateOf("") }
     var recordId by rememberSaveable { mutableStateOf("") }
     var observationNote by rememberSaveable { mutableStateOf("") }
-    var observationLatitude by rememberSaveable { mutableStateOf("41.3874") }
-    var observationLongitude by rememberSaveable { mutableStateOf("2.1686") }
+    var observationLatitude by rememberSaveable { mutableStateOf("") }
+    var observationLongitude by rememberSaveable { mutableStateOf("") }
     var localStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingLocationTarget by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingCameraTarget by rememberSaveable { mutableStateOf<String?>(null) }
@@ -100,7 +100,7 @@ fun ActionsScreen(
     var observationSubmitted by rememberSaveable { mutableStateOf(false) }
 
     val reportNameError = if (reportSubmitted) requiredError(provisionalName, "El nombre provisional") else null
-    val reportDescriptionError = maxLengthError(description, 2000, "La descripcion")
+    val reportDescriptionError = maxLengthError(description, 2000, "La descripción")
     val reportPhotoError = if (reportSubmitted && selectedPhotoUri == null) "Selecciona o captura una foto." else null
     val reportLatitudeError = if (reportSubmitted) coordinateError(latitude, "Latitud", -90.0, 90.0) else null
     val reportLongitudeError = if (reportSubmitted) coordinateError(longitude, "Longitud", -180.0, 180.0) else null
@@ -405,7 +405,7 @@ fun ActionsScreen(
                         reportSubmitted = true
                         val currentErrors = listOf(
                             requiredError(provisionalName, "El nombre provisional"),
-                            maxLengthError(description, 2000, "La descripcion"),
+                            maxLengthError(description, 2000, "La descripción"),
                             if (selectedPhotoUri == null) "Selecciona o captura una foto." else null,
                             coordinateError(latitude, "Latitud", -90.0, 90.0),
                             coordinateError(longitude, "Longitud", -180.0, 180.0),
@@ -655,7 +655,10 @@ private fun Context.fetchPlantariaLocation(
     val allowFineLocation = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     val provider = locationManager.bestPlantariaProvider(allowFineLocation)
     if (provider == null) {
-        locationManager.latestKnownPlantariaLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+        locationManager.latestKnownPlantariaLocation(allowFineLocation)
+            ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+            ?.let(onLocation)
+            ?: onUnavailable()
         return
     }
 
@@ -667,16 +670,36 @@ private fun Context.fetchPlantariaLocation(
                 Handler(Looper.getMainLooper()).asExecutor(),
             ) { location ->
                 location
+                    ?.takeIf { candidate -> candidate.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
                     ?.let(onLocation)
-                    ?: locationManager.latestKnownPlantariaLocation(allowFineLocation)?.let(onLocation)
+                    ?: locationManager.latestKnownPlantariaLocation(allowFineLocation)
+                        ?.takeIf { candidate -> candidate.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+                        ?.let(onLocation)
                     ?: onUnavailable()
             }
         }.onFailure {
-            locationManager.latestKnownPlantariaLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+            locationManager.latestKnownPlantariaLocation(allowFineLocation)
+                ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+                ?.let(onLocation)
+                ?: onUnavailable()
         }
     } else {
-        locationManager.latestKnownPlantariaLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+        locationManager.latestKnownPlantariaLocation(allowFineLocation)
+            ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+            ?.let(onLocation)
+            ?: onUnavailable()
     }
+}
+
+private const val MAX_LOCATION_AGE_MS = 10 * 60 * 1000L
+
+private fun Location.isRecent(maxAgeMs: Long): Boolean {
+    if (time <= 0L) {
+        return false
+    }
+
+    val age = System.currentTimeMillis() - time
+    return age in 0..maxAgeMs
 }
 
 private fun LocationManager.bestPlantariaProvider(allowFineLocation: Boolean): String? {
@@ -729,8 +752,12 @@ private fun coordinateError(
     min: Double,
     max: Double,
 ): String? {
+    if (value.isBlank()) {
+        return "$label es obligatorio."
+    }
+
     val number = value.replace(',', '.').toDoubleOrNull()
-        ?: return "$label debe ser un numero valido."
+        ?: return "$label debe ser un número válido."
 
     return if (number !in min..max) {
         "$label debe estar entre ${min.toInt()} y ${max.toInt()}."

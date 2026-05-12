@@ -68,7 +68,7 @@ Plantaria se divide en cuatro bloques:
 - Base de datos: PostgreSQL/PostGIS levantado con Docker Compose.
 - Analitica: modulo Python+pandas integrado con el panel mediante snapshots CSV/JSON.
 
-El backend centraliza autenticacion, reglas de dominio, subida de fotos, moderacion y respuestas API. Android consume la API y mantiene una URL configurable para emulador, USB o Wi-Fi.
+El backend centraliza autenticacion, reglas de dominio, subida de fotos, moderacion y respuestas API. Android consume la API y mantiene una URL configurable para emulador, USB, Wi-Fi o produccion. La rama actual deja preparado tambien un despliegue VPS reproducible con dominio propio, sin depender de datos privados dentro del repositorio.
 
 ## Modelo de dominio
 
@@ -105,6 +105,8 @@ Laravel registra eventos en `app_events` y exporta datasets operativos con `php 
 
 El panel tambien prepara `/admin/assistant`, una pagina solo para `ADMIN` que consulta un modelo local de Ollama usando el snapshot pandas como contexto. Esta parte es opcional y no sustituye las reglas de moderacion ni el backend principal.
 
+Ademas, el panel dispone de consultas directas seguras a base de datos y de una ruta `/admin/assistant/sql` para SQL de solo lectura restringido a `ADMIN`. Esto permite explotar datos administrativos en demo o en operativa sin abrir escrituras directas ni depender obligatoriamente de la IA.
+
 ## Uso de PostGIS
 
 PostGIS se activa en migracion para PostgreSQL. El MVP guarda latitud y longitud como decimales, pero ya usa PostGIS en una consulta real: `GET /api/records` puede recibir `latitude`, `longitude` y `radius_km`, filtrar por radio con `ST_DWithin`, calcular distancia con `ST_Distance` y devolver `distance_km`.
@@ -117,19 +119,25 @@ Esto demuestra el uso real de la extension sin sobredimensionar el modelo antes 
 - Tokens Sanctum para Android.
 - Middleware de cuenta activa para impedir uso de tokens de usuarios bloqueados.
 - Requests Laravel para validar entradas.
+- Saneado ligero de inputs en `FormRequest`.
+- CORS configurable por entorno y cerrado a origenes concretos en produccion.
+- Rate limiting para login API, login admin web, geocoding, subida de fotos y asistente admin.
 - Panel web restringido a `MOD` y `ADMIN`.
 - API administrativa con tests de permisos por rol.
 - Edicion avanzada limitada a `ADMIN`.
 - Subida de fotos protegida por autenticacion.
+- SQL administrativo solo de lectura con bloqueo de escrituras, comentarios, multi statement y palabras clave peligrosas.
 - Cleartext HTTP permitido solo para desarrollo local Android.
+
+Como decision de alcance, no se ha implantado todavia `row level security` real en PostgreSQL. La proteccion actual se apoya en roles de aplicacion, validaciones, throttling y restricciones del backend, lo que encaja mejor con el MVP y reduce riesgo operativo en esta fase.
 
 ## Pruebas
 
 Validaciones automatizadas recientes:
 
 ```text
-php artisan test: 38 tests, 176 assertions
-./gradlew :app:assembleDebug: BUILD SUCCESSFUL
+php artisan test: 43 tests, 205 assertions
+./gradlew :app:assembleProdDebug: BUILD SUCCESSFUL
 bash -n scripts/start_mobile_stack.sh: correcto
 bash -n scripts/install_debug_apk.sh: correcto
 bash -n scripts/profile_app_performance.sh: correcto
@@ -137,12 +145,15 @@ bash -n scripts/profile_app_performance.sh: correcto
 
 Tambien se ha validado contra PostgreSQL/PostGIS local el filtro por radio de `/api/records`, la generacion del snapshot Python+pandas y el perfilado rapido de endpoints criticos de la app.
 
+En el despliegue VPS se han comprobado ademas tres evidencias operativas: la respuesta publica de la API, el preflight CORS con origen permitido y la ejecucion correcta del servicio de SQL de solo lectura. Antes del endurecimiento se genero backup del backend vivo para poder revertir el cambio sin perdida de trabajo.
+
 ## Riesgos y limitaciones
 
 - La validacion completa en telefono fisico sigue siendo el principal bloqueo final.
 - Las pruebas backend automaticas usan sqlite; no sustituyen pruebas manuales contra PostgreSQL/PostGIS.
 - El mapa usa MapLibre Native Android con un estilo publico de demo/desarrollo; queda documentado como suficiente para el TFC local, no como infraestructura final de produccion.
 - El modulo Python es auxiliar, no parte del flujo principal.
+- La capa de seguridad actual endurece backend y panel, pero no equivale a RLS nativo en base de datos; esa mejora se deja como evolucion posterior si el proyecto crece.
 
 ## Lineas futuras
 

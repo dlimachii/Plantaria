@@ -2,7 +2,7 @@
     <div class="actions" style="justify-content: space-between; margin-bottom: 16px;">
         <div>
             <h1 style="margin-bottom: 4px;">Usuarios</h1>
-            <p class="muted" style="margin: 0;">Gestion basica de roles y estado de cuentas.</p>
+            <p class="muted" style="margin: 0;">Gestión básica de roles y estado de cuentas.</p>
         </div>
         <a class="button secondary" href="{{ route('admin.dashboard') }}">Volver</a>
     </div>

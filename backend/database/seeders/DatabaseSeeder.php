@@ -15,6 +15,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
@@ -25,11 +26,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $adminPassword = $this->requiredEnv('PLANTARIA_ADMIN_PASSWORD');
+        $demoPassword = $this->requiredEnv('PLANTARIA_DEMO_PASSWORD');
+        $userPassword = $this->requiredEnv('PLANTARIA_USER_PASSWORD');
+        $modPassword = $this->requiredEnv('PLANTARIA_MOD_PASSWORD');
+
         $admin = $this->seedDemoUser(
             email: env('PLANTARIA_ADMIN_EMAIL', 'admin@plantaria.local'),
             handle: env('PLANTARIA_ADMIN_HANDLE', 'plantaria_admin'),
             displayName: env('PLANTARIA_ADMIN_NAME', 'Plantaria Admin'),
-            password: env('PLANTARIA_ADMIN_PASSWORD', 'PlantariaAdmin1'),
+            password: $adminPassword,
             role: UserRole::ADMIN,
             province: 'Valencia',
             city: 'Valencia',
@@ -39,7 +45,7 @@ class DatabaseSeeder extends Seeder
             email: 'demo@plantaria.local',
             handle: 'plantaria_demo',
             displayName: 'Plantaria Demo',
-            password: 'PlantariaDemo1',
+            password: $demoPassword,
             role: UserRole::USER,
             defaultLat: 41.3874,
             defaultLng: 2.1686,
@@ -49,7 +55,7 @@ class DatabaseSeeder extends Seeder
             email: 'user@plantaria.local',
             handle: 'plantaria_user',
             displayName: 'Plantaria Usuario',
-            password: 'PlantariaUser1',
+            password: $userPassword,
             role: UserRole::USER,
             defaultLat: 41.3874,
             defaultLng: 2.1686,
@@ -59,7 +65,7 @@ class DatabaseSeeder extends Seeder
             email: 'mod@plantaria.local',
             handle: 'plantaria_mod',
             displayName: 'Plantaria Moderador',
-            password: 'PlantariaMod1',
+            password: $modPassword,
             role: UserRole::MOD,
             defaultLat: 41.3874,
             defaultLng: 2.1686,
@@ -207,6 +213,17 @@ class DatabaseSeeder extends Seeder
         $user->save();
 
         return $user;
+    }
+
+    private function requiredEnv(string $key): string
+    {
+        $value = trim((string) env($key));
+
+        if ($value === '') {
+            throw new RuntimeException("Falta configurar {$key} en el .env para poder ejecutar el seeder de demo.");
+        }
+
+        return $value;
     }
 
     private function ensureDemoPhoto(string $path, array $baseColor): void

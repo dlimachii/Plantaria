@@ -138,13 +138,18 @@ measure_endpoint() {
 login_demo_user() {
   local response_file="$TMP_DIR/login.json"
   local handle="${PLANTARIA_PROFILE_HANDLE:-plantaria_demo}"
-  local password="${PLANTARIA_PROFILE_PASSWORD:-PlantariaDemo1}"
+  local password="${PLANTARIA_PROFILE_PASSWORD:-}"
   local payload
   local metrics
   local status
   local time_total
   local size_download
   local token
+
+  if [[ -z "$password" ]]; then
+    echo "PLANTARIA_PROFILE_PASSWORD no esta configurado; se salta login y endpoints autenticados." >&2
+    return
+  fi
 
   payload="{\"handle\":\"$handle\",\"password\":\"$password\",\"device_name\":\"profile-script\"}"
   metrics="$(curl_request "POST" "$BASE_URL/api/auth/login" "$payload" "" "$response_file")"
@@ -187,18 +192,23 @@ first_record_public_id() {
 }
 
 report_apk_size() {
-  local apk_path="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
+  local flavor="${PLANTARIA_ANDROID_FLAVOR:-prod}"
+  local apk_path
+  apk_path="$(find "$ANDROID_DIR/app/build/outputs/apk" -type f -path "*/${flavor}/debug/*.apk" -name "app-${flavor}-debug.apk" | head -n 1)"
+  if [[ -z "$apk_path" ]]; then
+    apk_path="$(find "$ANDROID_DIR/app/build/outputs/apk" -type f -path "*/${flavor}/debug/*.apk" | head -n 1)"
+  fi
 
   section "Tamaño APK"
   if [[ ! -f "$apk_path" ]]; then
-    echo "No existe $apk_path. Ejecuta primero: cd android && ./gradlew :app:assembleDebug"
+    echo "No existe el APK debug para flavor '$flavor'. Ejecuta primero: cd android && ./gradlew :app:assemble${flavor^}Debug"
     return
   fi
 
   awk -v bytes="$(wc -c < "$apk_path")" '
     BEGIN {
       mib = bytes / 1024 / 1024
-      printf "app-debug.apk: %.1f MiB\n", mib
+      printf "APK: %.1f MiB\n", mib
       if (mib > 100) {
         print "Aviso: APK debug por encima de 100 MiB; revisar dependencias, recursos y build release."
       }

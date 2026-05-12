@@ -2,7 +2,7 @@
     <div class="actions" style="justify-content: space-between; margin-bottom: 16px;">
         <div>
             <h1 style="margin-bottom: 4px;">Registros del panel</h1>
-            <p class="muted" style="margin: 0;">Moderacion operativa con filtro por estado y busqueda por ID o nombre.</p>
+            <p class="muted" style="margin: 0;">Moderación operativa con filtro por estado y búsqueda por ID o nombre.</p>
         </div>
         <a class="button secondary" href="{{ route('admin.dashboard') }}">Volver</a>
     </div>
@@ -11,7 +11,7 @@
         <form class="actions" method="get" action="{{ route('admin.moderation.pending') }}">
             <label style="margin: 0; min-width: 220px; flex: 1 1 220px;">
                 Buscar
-                <input name="q" value="{{ $search }}" placeholder="ID publico o nombre">
+                <input name="q" value="{{ $search }}" placeholder="ID público o nombre">
             </label>
             <label style="margin: 0; min-width: 200px;">
                 Estado
@@ -40,7 +40,7 @@
                         <th>Registro</th>
                         <th>Estado</th>
                         <th>Autor</th>
-                        <th>Ubicacion</th>
+                        <th>Ubicación</th>
                         <th>Fecha</th>
                         <th></th>
                     </tr>

@@ -14,6 +14,7 @@ use App\Models\Observation;
 use App\Models\PlantRecord;
 use App\Models\User;
 use App\Services\PandasAnalyticsReport;
+use App\Services\ServerFootprintSnapshot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -22,11 +23,16 @@ use Illuminate\View\View;
 
 class AdminDashboardController extends Controller
 {
-    public function __invoke(Request $request, PandasAnalyticsReport $pandasReport): View
+    public function __invoke(
+        Request $request,
+        PandasAnalyticsReport $pandasReport,
+        ServerFootprintSnapshot $serverFootprint,
+    ): View
     {
         $this->ensureModerator($request);
 
         $today = now()->startOfDay();
+        $reviewWindowFrom = now()->subDays(7)->startOfDay();
         $trendFrom = now()->subDays(13)->startOfDay();
 
         $pendingRecords = PlantRecord::query()->where('verification_status', VerificationStatus::PENDING->value)->count();
@@ -34,6 +40,7 @@ class AdminDashboardController extends Controller
         $rejectedRecords = PlantRecord::query()->where('verification_status', VerificationStatus::REJECTED->value)->count();
         $activeUsers = User::query()->where('status', UserStatus::ACTIVE->value)->count();
         $openFlags = ModerationFlag::query()->whereIn('status', [FlagStatus::OPEN->value, FlagStatus::REVIEWING->value])->count();
+        [$averageReviewTime7d, $averageReviewSamples7d] = $this->buildAverageReviewTime($reviewWindowFrom);
 
         $dailyActivity = $this->buildDailyActivity($trendFrom, 14);
         $hourlyActivity = $this->buildHourlyActivity();
@@ -63,6 +70,10 @@ class AdminDashboardController extends Controller
             'activeUsers' => $activeUsers,
             'openFlags' => $openFlags,
             'recordsToday' => PlantRecord::query()->where('created_at', '>=', $today)->count(),
+            'pendingRecordsToday' => PlantRecord::query()
+                ->where('created_at', '>=', $today)
+                ->where('verification_status', VerificationStatus::PENDING->value)
+                ->count(),
             'observationsToday' => Observation::query()->where('created_at', '>=', $today)->count(),
             'newUsersToday' => User::query()->where('created_at', '>=', $today)->count(),
             'activeUsersToday' => AppEvent::query()
@@ -70,6 +81,8 @@ class AdminDashboardController extends Controller
                 ->distinct('user_id')
                 ->whereNotNull('user_id')
                 ->count('user_id'),
+            'averageReviewTime7d' => $averageReviewTime7d,
+            'averageReviewSamples7d' => $averageReviewSamples7d,
             'reviewCoveragePercent' => $totalRecords > 0 ? (int) round(($reviewedRecords / $totalRecords) * 100) : 0,
             'dailyActivity' => $dailyActivity,
             'hourlyActivity' => $hourlyActivity,
@@ -77,6 +90,7 @@ class AdminDashboardController extends Controller
             'topCreators' => $topCreators,
             'recentEvents' => AppEvent::query()->latest('occurred_at')->limit(10)->get(),
             'pandasAnalytics' => $pandasReport->read(),
+            'serverFootprint' => $serverFootprint->read(),
         ]);
     }
 
@@ -143,6 +157,54 @@ class AdminDashboardController extends Controller
         return DB::getDriverName() === 'pgsql'
             ? "TO_CHAR(occurred_at, 'HH24')"
             : "strftime('%H', occurred_at)";
+    }
+
+    /**
+     * @return array{0: string, 1: int}
+     */
+    private function buildAverageReviewTime(\DateTimeInterface $from): array
+    {
+        $records = PlantRecord::query()
+            ->whereNotNull('verified_at')
+            ->where('verified_at', '>=', $from)
+            ->whereIn('verification_status', [
+                VerificationStatus::VERIFIED->value,
+                VerificationStatus::REJECTED->value,
+            ])
+            ->latest('verified_at')
+            ->limit(250)
+            ->get(['created_at', 'verified_at']);
+
+        if ($records->isEmpty()) {
+            return ['n/a', 0];
+        }
+
+        $totalMinutes = 0;
+
+        foreach ($records as $record) {
+            if (! $record->verified_at || ! $record->created_at) {
+                continue;
+            }
+
+            $totalMinutes += max(0, $record->created_at->diffInMinutes($record->verified_at));
+        }
+
+        $samples = max(0, $records->count());
+
+        if ($samples === 0) {
+            return ['n/a', 0];
+        }
+
+        $averageMinutes = (int) round($totalMinutes / $samples);
+
+        if ($averageMinutes < 60) {
+            return [$averageMinutes.' min', $samples];
+        }
+
+        $hours = intdiv($averageMinutes, 60);
+        $minutes = $averageMinutes % 60;
+
+        return [$hours.' h '.$minutes.' min', $samples];
     }
 
     private function ensureModerator(Request $request): void

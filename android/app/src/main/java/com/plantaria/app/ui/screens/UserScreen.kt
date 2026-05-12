@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.LocationOn
@@ -326,16 +327,17 @@ private fun UserActivityRow(item: UserActivityItem) {
                 }
             }
             Icon(
-                imageVector = if (item.status == "verified" || item.type == "record_verified") {
-                    Icons.Outlined.CheckCircle
-                } else {
-                    Icons.Outlined.Schedule
+                imageVector = when {
+                    item.type == "record_verified" && item.status == "rejected" -> Icons.Outlined.Cancel
+                    item.type == "record_verified" -> Icons.Outlined.CheckCircle
+                    item.status == "verified" -> Icons.Outlined.CheckCircle
+                    else -> Icons.Outlined.Schedule
                 },
                 contentDescription = item.status,
-                tint = if (item.status == "verified" || item.type == "record_verified") {
-                    PlantariaColors.Leaf
-                } else {
-                    PlantariaColors.Earth
+                tint = when {
+                    item.type == "record_verified" && item.status == "rejected" -> MaterialTheme.colorScheme.error
+                    item.status == "verified" || item.type == "record_verified" -> PlantariaColors.Leaf
+                    else -> PlantariaColors.Earth
                 },
             )
         }
@@ -373,6 +375,7 @@ private fun activityIcon(type: String): androidx.compose.ui.graphics.vector.Imag
         "observation_created" -> Icons.Outlined.EditNote
         "flag_created", "flag_updated" -> Icons.Outlined.Flag
         "record_verified" -> Icons.Outlined.CheckCircle
+        "record_updated" -> Icons.Outlined.EditNote
         else -> Icons.Outlined.LocationOn
     }
 }

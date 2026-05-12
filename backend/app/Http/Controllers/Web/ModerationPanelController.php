@@ -89,9 +89,23 @@ class ModerationPanelController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
+        $moderationEvents = AppEvent::query()
+            ->with('user')
+            ->where('plant_record_id', $record->id)
+            ->whereIn('event_type', [
+                EventType::RECORD_CREATED->value,
+                EventType::OBSERVATION_CREATED->value,
+                EventType::RECORD_UPDATED->value,
+                EventType::RECORD_VERIFIED->value,
+            ])
+            ->latest('occurred_at')
+            ->limit(18)
+            ->get();
+
         return view('admin.moderation.show', [
             'record' => $record,
             'relatedFlags' => $relatedFlags,
+            'moderationEvents' => $moderationEvents,
             'conditions' => PlantCondition::cases(),
             'statuses' => VerificationStatus::cases(),
         ]);
@@ -132,6 +146,12 @@ class ModerationPanelController extends Controller
             'verification_status' => $status->value,
         ]);
 
+        $this->recordEventForAuthor($record, $admin, EventType::RECORD_UPDATED, metadata: [
+            'source' => 'web_admin',
+            'previous_verification_status' => $wasStatus->value,
+            'verification_status' => $status->value,
+        ]);
+
         return redirect()
             ->route('admin.moderation.show', $record->public_id)
             ->with('status', 'Registro actualizado.');
@@ -165,6 +185,12 @@ class ModerationPanelController extends Controller
             'source' => 'web_admin',
         ]);
 
+        $this->recordEventForAuthor($record, $moderator, EventType::RECORD_VERIFIED, metadata: [
+            'verification_status' => VerificationStatus::VERIFIED->value,
+            'reviewed_by' => $moderator->handle,
+            'source' => 'web_admin',
+        ]);
+
         return redirect()
             ->route('admin.moderation.show', $record->public_id)
             ->with('status', 'Registro verificado.');
@@ -193,6 +219,12 @@ class ModerationPanelController extends Controller
 
         AppEvent::record(EventType::RECORD_VERIFIED, $moderator, $record, metadata: [
             'verification_status' => VerificationStatus::REJECTED->value,
+            'source' => 'web_admin',
+        ]);
+
+        $this->recordEventForAuthor($record, $moderator, EventType::RECORD_VERIFIED, metadata: [
+            'verification_status' => VerificationStatus::REJECTED->value,
+            'reviewed_by' => $moderator->handle,
             'source' => 'web_admin',
         ]);
 
@@ -253,5 +285,28 @@ class ModerationPanelController extends Controller
         }
 
         return now();
+    }
+
+    private function recordEventForAuthor(
+        PlantRecord $record,
+        User $actor,
+        EventType $type,
+        array $metadata = [],
+    ): void {
+        $authorId = $record->created_by_user_id;
+        if ($authorId === null || $authorId === $actor->id) {
+            return;
+        }
+
+        $author = User::query()->find($authorId);
+        if (! $author) {
+            return;
+        }
+
+        AppEvent::record($type, $author, $record, metadata: [
+            ...$metadata,
+            'actor_handle' => $actor->handle,
+            'actor_role' => $actor->role?->value,
+        ]);
     }
 }

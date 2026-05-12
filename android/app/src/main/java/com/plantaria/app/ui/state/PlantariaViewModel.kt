@@ -20,16 +20,28 @@ import com.plantaria.app.data.model.PlantRecord
 import com.plantaria.app.data.model.UserActivityItem
 import com.plantaria.app.data.session.AppSession
 import com.plantaria.app.data.session.SessionStore
+import java.io.File
 import java.io.ByteArrayOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
+import org.json.JSONObject
 
+/**
+ * ViewModel principal del cliente Android.
+ *
+ * Orquesta autenticación, sesión persistida, caché local ligera, consumo de API y acciones
+ * del usuario en mapa, observaciones y perfil.
+ */
 class PlantariaViewModel(application: Application) : AndroidViewModel(application) {
     private val defaultApiBaseUrl = defaultPlantariaApiBaseUrl()
     private val sessionStore = SessionStore(application, defaultApiBaseUrl)
+    private var legacyApiBaseUrlChecked = false
+    private var bootstrapChecked = false
 
     var uiState by mutableStateOf(PlantariaUiState())
         private set
@@ -43,8 +55,19 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                     authChecked = true,
                 )
 
+                if (!legacyApiBaseUrlChecked) {
+                    legacyApiBaseUrlChecked = true
+                    maybeResetLegacyLocalApiBaseUrl(session)
+                }
+
+                if (!bootstrapChecked) {
+                    bootstrapChecked = true
+                    maybeBootstrapApiBaseUrl(session)
+                }
+
                 if (session.token != null && session.token != previousToken) {
                     refreshCurrentUser()
+                    maybeLoadCachedRecords()
                     refreshRecords()
                     refreshUserActivity()
                 } else if (session.token == null) {
@@ -60,6 +83,88 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
         }
+    }
+
+    private fun maybeLoadCachedRecords() {
+        if (uiState.records.isNotEmpty()) {
+            return
+        }
+
+        viewModelScope.launch {
+            val cached = withContext(Dispatchers.IO) { readRecordsCache() }.orEmpty()
+            if (cached.isNotEmpty()) {
+                uiState = uiState.copy(records = cached)
+            }
+        }
+    }
+
+    private fun maybeResetLegacyLocalApiBaseUrl(session: AppSession) {
+        if (!session.isApiBaseUrlExplicit) {
+            return
+        }
+
+        val explicitApiBaseUrl = session.apiBaseUrl.normalizedApiBaseUrl() ?: return
+        val defaultNormalizedApiBaseUrl = defaultApiBaseUrl.normalizedApiBaseUrl() ?: return
+        if (!explicitApiBaseUrl.isLegacyLocalApiBaseUrl() || defaultNormalizedApiBaseUrl.isLegacyLocalApiBaseUrl()) {
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                sessionStore.resetApiBaseUrlToDefault()
+            }.onSuccess {
+                uiState = uiState.copy(
+                    message = "Servidor restablecido a la API publica.",
+                    error = null,
+                )
+            }
+        }
+    }
+
+    private fun maybeBootstrapApiBaseUrl(session: AppSession) {
+        if (session.isApiBaseUrlExplicit) {
+            return
+        }
+
+        val configUrl = BuildConfig.PLANTARIA_BOOTSTRAP_CONFIG_URL.trim()
+        if (configUrl.isBlank()) {
+            return
+        }
+
+        viewModelScope.launch {
+            val bootstrapped = runCatching {
+                fetchBootstrapApiBaseUrl(configUrl)
+            }.getOrNull()
+
+            val normalized = bootstrapped?.normalizedApiBaseUrl() ?: return@launch
+            runCatching {
+                sessionStore.saveApiBaseUrl(normalized)
+            }.onSuccess {
+                uiState = uiState.copy(message = "Servidor actualizado.", error = null)
+            }
+        }
+    }
+
+    private suspend fun fetchBootstrapApiBaseUrl(configUrl: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val connection = (URL(configUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 5_000
+                readTimeout = 10_000
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/json")
+            }
+
+            val response = try {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                connection.disconnect()
+            }
+
+            val json = JSONObject(response)
+            json.optString("api_base_url").ifBlank {
+                json.optString("apiBaseUrl").ifBlank { "" }
+            }.ifBlank { null }
+        }.getOrNull()
     }
 
     fun refreshUserActivity() {
@@ -191,6 +296,34 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun setApiBaseUrl(value: String) {
+        val normalized = value.normalizedApiBaseUrl()
+        if (normalized == null) {
+            uiState = uiState.copy(error = "URL de servidor no válida. Debe empezar por http:// o https://.")
+            return
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                sessionStore.saveApiBaseUrl(normalized)
+            }.onSuccess {
+                uiState = uiState.copy(message = "Servidor actualizado.", error = null)
+            }.onFailure { throwable ->
+                uiState = uiState.copy(error = throwable.readableMessage())
+            }
+        }
+    }
+
+    fun markMapTourSeen() {
+        viewModelScope.launch {
+            runCatching {
+                sessionStore.markMapTourSeen()
+            }.onFailure { throwable ->
+                uiState = uiState.copy(error = throwable.readableMessage())
+            }
+        }
+    }
+
     fun register(
         handle: String,
         displayName: String,
@@ -202,7 +335,7 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         city: String,
     ) {
         if (handle.isBlank() || displayName.isBlank() || email.isBlank() || password.isBlank() || country.isBlank()) {
-            uiState = uiState.copy(error = "Completa los campos obligatorios.")
+            uiState = uiState.copy(error = "Rellena handle, nombre visible, email, contraseña y país.")
             return
         }
 
@@ -309,10 +442,19 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         val latitude = latitudeText.replace(',', '.').toDoubleOrNull()
         val longitude = longitudeText.replace(',', '.').toDoubleOrNull()
 
-        if (provisionalCommonName.isBlank() || photoUri == null || latitude == null || longitude == null) {
-            uiState = uiState.copy(error = "Completa nombre, foto y coordenadas válidas.")
+        val missing = buildList {
+            if (provisionalCommonName.isBlank()) add("nombre")
+            if (photoUri == null) add("foto")
+            if (latitude == null || longitude == null) add("ubicación")
+        }
+        if (missing.isNotEmpty()) {
+            uiState = uiState.copy(error = "Falta: ${missing.joinToString(", ")}.")
             return
         }
+
+        val selectedPhotoUri = photoUri!!
+        val latitudeValue = latitude!!
+        val longitudeValue = longitude!!
 
         viewModelScope.launch {
             uiState = uiState.copy(
@@ -321,7 +463,7 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                 message = "Preparando foto...",
             )
             runCatching {
-                val photo = prepareUploadPhoto(photoUri)
+                val photo = prepareUploadPhoto(selectedPhotoUri)
                 uiState = uiState.copy(message = "Subiendo foto del reporte...")
                 val photoPath = apiClient().uploadPhoto(
                     token = token,
@@ -336,8 +478,8 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                     provisionalCommonName = provisionalCommonName.trim(),
                     description = description.trim().takeIf { it.isNotBlank() },
                     primaryPhotoPath = photoPath,
-                    latitude = latitude,
-                    longitude = longitude,
+                    latitude = latitudeValue,
+                    longitude = longitudeValue,
                 )
             }.onSuccess { record ->
                 uiState = uiState.copy(
@@ -368,10 +510,19 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
         val latitude = latitudeText.replace(',', '.').toDoubleOrNull()
         val longitude = longitudeText.replace(',', '.').toDoubleOrNull()
 
-        if (recordPublicId.isBlank() || photoUri == null || latitude == null || longitude == null) {
-            uiState = uiState.copy(error = "Completa ID, foto y coordenadas válidas.")
+        val missing = buildList {
+            if (recordPublicId.isBlank()) add("ID")
+            if (photoUri == null) add("foto")
+            if (latitude == null || longitude == null) add("ubicación")
+        }
+        if (missing.isNotEmpty()) {
+            uiState = uiState.copy(error = "Falta: ${missing.joinToString(", ")}.")
             return
         }
+
+        val selectedPhotoUri = photoUri!!
+        val latitudeValue = latitude!!
+        val longitudeValue = longitude!!
 
         viewModelScope.launch {
             uiState = uiState.copy(
@@ -380,8 +531,8 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                 message = "Preparando foto...",
             )
             runCatching {
-                val photo = prepareUploadPhoto(photoUri)
-                uiState = uiState.copy(message = "Subiendo foto de la observacion...")
+                val photo = prepareUploadPhoto(selectedPhotoUri)
+                uiState = uiState.copy(message = "Subiendo foto de la observación...")
                 val photoPath = apiClient().uploadPhoto(
                     token = token,
                     bytes = photo.bytes,
@@ -389,14 +540,14 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                     mimeType = photo.mimeType,
                 )
 
-                uiState = uiState.copy(message = "Guardando observacion...")
+                uiState = uiState.copy(message = "Guardando observación...")
                 apiClient().createObservation(
                     token = token,
                     recordPublicId = recordPublicId.trim(),
                     photoPath = photoPath,
                     note = note.trim().takeIf { it.isNotBlank() },
-                    latitude = latitude,
-                    longitude = longitude,
+                    latitude = latitudeValue,
+                    longitude = longitudeValue,
                 )
             }.onSuccess { observation ->
                 uiState = uiState.copy(
@@ -451,10 +602,106 @@ class PlantariaViewModel(application: Application) : AndroidViewModel(applicatio
                 apiClient().records(query?.trim()?.takeIf { it.isNotBlank() })
             }.onSuccess { records ->
                 uiState = uiState.copy(records = records)
+                if (query.isNullOrBlank()) {
+                    viewModelScope.launch(Dispatchers.IO) {
+                        runCatching { writeRecordsCache(records) }
+                    }
+                }
             }.onFailure { throwable ->
                 uiState = uiState.copy(error = throwable.readableMessage())
             }
             uiState = uiState.copy(isRecordsLoading = false)
+        }
+    }
+
+    private fun recordsCacheFile(): File {
+        return File(getApplication<Application>().filesDir, "plantaria-records-cache.json")
+    }
+
+    private fun readRecordsCache(): List<PlantRecord>? {
+        val file = recordsCacheFile()
+        if (!file.exists()) {
+            return null
+        }
+
+        val raw = runCatching { file.readText() }.getOrNull()?.trim().orEmpty()
+        if (raw.isBlank()) {
+            return null
+        }
+
+        val root = JSONObject(raw)
+        val data = root.optJSONArray("data") ?: return null
+        return buildList {
+            for (i in 0 until data.length()) {
+                val item = data.optJSONObject(i) ?: continue
+                add(
+                    PlantRecord(
+                        uid = item.optString("uid").ifBlank { null },
+                        publicId = item.optString("public_id"),
+                        provisionalCommonName = item.optString("provisional_common_name"),
+                        verifiedCommonName = item.optString("verified_common_name").ifBlank { null },
+                        verifiedScientificName = item.optString("verified_scientific_name").ifBlank { null },
+                        displayName = item.optString("display_name").ifBlank { item.optString("provisional_common_name") },
+                        description = item.optString("description").ifBlank { null },
+                        primaryPhotoPath = item.optString("primary_photo_path").ifBlank { null },
+                        primaryPhotoUrl = item.optString("primary_photo_url").ifBlank { null },
+                        plantCondition = item.optString("plant_condition").ifBlank { null },
+                        verificationStatus = item.optString("verification_status").ifBlank { null },
+                        latitude = item.optDouble("latitude"),
+                        longitude = item.optDouble("longitude"),
+                        latestObservationAt = item.optString("latest_observation_at").ifBlank { null },
+                        createdAt = item.optString("created_at").ifBlank { null },
+                        author = item.optJSONObject("author")?.let { author ->
+                            com.plantaria.app.data.model.RecordAuthor(
+                                handle = author.optString("handle").ifBlank { null },
+                                displayName = author.optString("display_name").ifBlank { null },
+                                photoPath = author.optString("photo_path").ifBlank { null },
+                                photoUrl = author.optString("photo_url").ifBlank { null },
+                            )
+                        },
+                        observations = emptyList(),
+                    )
+                )
+            }
+        }
+    }
+
+    private fun writeRecordsCache(records: List<PlantRecord>) {
+        val root = JSONObject()
+        root.put("saved_at", System.currentTimeMillis())
+        val data = org.json.JSONArray()
+        records.forEach { record ->
+            val item = JSONObject()
+            item.put("uid", record.uid)
+            item.put("public_id", record.publicId)
+            item.put("provisional_common_name", record.provisionalCommonName)
+            item.put("verified_common_name", record.verifiedCommonName)
+            item.put("verified_scientific_name", record.verifiedScientificName)
+            item.put("display_name", record.displayName)
+            item.put("description", record.description)
+            item.put("primary_photo_path", record.primaryPhotoPath)
+            item.put("primary_photo_url", record.primaryPhotoUrl)
+            item.put("plant_condition", record.plantCondition)
+            item.put("verification_status", record.verificationStatus)
+            item.put("latitude", record.latitude)
+            item.put("longitude", record.longitude)
+            item.put("latest_observation_at", record.latestObservationAt)
+            item.put("created_at", record.createdAt)
+            record.author?.let { author ->
+                val authorJson = JSONObject()
+                authorJson.put("handle", author.handle)
+                authorJson.put("display_name", author.displayName)
+                authorJson.put("photo_path", author.photoPath)
+                authorJson.put("photo_url", author.photoUrl)
+                item.put("author", authorJson)
+            }
+            data.put(item)
+        }
+        root.put("data", data)
+
+        val file = recordsCacheFile()
+        runCatching {
+            file.writeText(root.toString())
         }
     }
 
@@ -557,11 +804,14 @@ private fun PlaceSearchResult.shortLabel(): String {
 }
 
 private fun defaultPlantariaApiBaseUrl(): String {
-    return if (isProbablyEmulator()) {
-        BuildConfig.PLANTARIA_API_BASE_URL
-    } else {
-        "http://127.0.0.1:8000/api/"
-    }
+    // For demos we always prefer the build-config base URL and allow users to override it from the login screen.
+    return BuildConfig.PLANTARIA_API_BASE_URL
+}
+
+private fun String.isLegacyLocalApiBaseUrl(): Boolean {
+    return runCatching {
+        URL(this).host.lowercase() in setOf("127.0.0.1", "10.0.2.2", "0.0.0.0", "localhost")
+    }.getOrDefault(false)
 }
 
 private fun isProbablyEmulator(): Boolean {

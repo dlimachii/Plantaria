@@ -21,14 +21,14 @@ class AdminAnalyticsController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
-            return back()->with('status', 'No se pudo generar la analitica de pandas. Revisa pandas/entorno Python.');
+            return back()->with('status', 'No se pudo generar la analítica de pandas. Revisa pandas/entorno Python.');
         }
 
         if ($exitCode !== 0) {
-            return back()->with('status', 'La exportacion termino, pero pandas devolvio error. Ejecuta php artisan plantaria:analytics:build para ver el detalle.');
+            return back()->with('status', 'La exportación terminó, pero pandas devolvió error. Ejecuta php artisan plantaria:analytics:build para ver el detalle.');
         }
 
-        return back()->with('status', 'Analitica de pandas actualizada.');
+        return back()->with('status', 'Analítica de pandas actualizada.');
     }
 
     private function ensureAdmin(Request $request): User

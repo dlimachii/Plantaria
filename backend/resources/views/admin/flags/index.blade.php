@@ -1,7 +1,7 @@
 <x-admin.layout title="Flags · Plantaria Admin">
     <div class="actions" style="justify-content: space-between; margin-bottom: 16px;">
         <div>
-            <h1 style="margin-bottom: 4px;">Flags de moderacion</h1>
+            <h1 style="margin-bottom: 4px;">Flags de moderación</h1>
             <p class="muted" style="margin: 0;">Denuncias creadas por usuarios sobre registros, observaciones o cuentas.</p>
         </div>
         <a class="button secondary" href="{{ route('admin.dashboard') }}">Volver</a>
@@ -41,7 +41,7 @@
             <p class="muted">No hay flags con este filtro.</p>
         @else
             <table>
-                <thead><tr><th>Target</th><th>Motivo</th><th>Estado</th><th>Reporta</th><th>Fecha</th><th>Accion</th></tr></thead>
+                <thead><tr><th>Target</th><th>Motivo</th><th>Estado</th><th>Reporta</th><th>Fecha</th><th>Acción</th></tr></thead>
                 <tbody>
                 @foreach ($flags as $flag)
                     @php
@@ -56,8 +56,8 @@
                         } elseif ($flag->target_type === \App\Enums\FlagTargetType::OBSERVATION && $flag->observation) {
                             $targetTitle = $flag->observation->public_id;
                             $targetMeta = $flag->observation->plantRecord
-                                ? 'Observacion de '.$flag->observation->plantRecord->public_id
-                                : 'Observacion sin registro asociado';
+                                ? 'Observación de '.$flag->observation->plantRecord->public_id
+                                : 'Observación sin registro asociado';
                             $targetUrl = $flag->observation->plantRecord
                                 ? route('admin.moderation.show', $flag->observation->plantRecord->public_id).'#observation-'.$flag->observation->uid
                                 : null;

@@ -39,7 +39,7 @@ class GeocodingController extends Controller
             report($throwable);
 
             return response()->json([
-                'message' => 'No se pudo resolver la ubicacion ahora mismo.',
+                'message' => 'No se pudo resolver la ubicación ahora mismo.',
             ], 502);
         }
 
@@ -72,7 +72,7 @@ class GeocodingController extends Controller
                 }
 
                 return [
-                    'display_name' => $result['display_name'] ?? 'Ubicacion sin nombre',
+                    'display_name' => $result['display_name'] ?? 'Ubicación sin nombre',
                     'latitude' => (float) $result['lat'],
                     'longitude' => (float) $result['lon'],
                     'type' => $result['type'] ?? null,

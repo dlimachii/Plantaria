@@ -12,17 +12,17 @@
             <img class="record-photo" src="{{ asset('storage/'.$record->primary_photo_path) }}" alt="Foto principal">
             <h2 style="margin-top: 16px;">Datos del reporte</h2>
             <p><strong>Autor:</strong> {{ $record->author?->handle ? '@'.$record->author->handle : 'sin autor' }}</p>
-            <p><strong>Condicion:</strong> {{ $record->plant_condition?->value ?? 'unknown' }}</p>
+            <p><strong>Condición:</strong> {{ $record->plant_condition?->value ?? 'unknown' }}</p>
             <p><strong>Coordenadas:</strong> {{ number_format((float) $record->latitude, 7) }}, {{ number_format((float) $record->longitude, 7) }}</p>
             <p><strong>Creado:</strong> {{ optional($record->created_at)->format('Y-m-d H:i') }}</p>
-            <p><strong>Ultima observacion:</strong> {{ optional($record->latest_observation_at)->format('Y-m-d H:i') ?: 'Sin datos' }}</p>
+            <p><strong>Última observación:</strong> {{ optional($record->latest_observation_at)->format('Y-m-d H:i') ?: 'Sin datos' }}</p>
             <p><strong>Validado por:</strong> {{ $record->verifier?->handle ? '@'.$record->verifier->handle : 'sin validar' }}</p>
-            <p><strong>Descripcion:</strong><br>{{ $record->description ?: 'Sin descripcion.' }}</p>
+            <p><strong>Descripción:</strong><br>{{ $record->description ?: 'Sin descripción.' }}</p>
 
             <h2>Observaciones</h2>
             @forelse ($record->observations as $observation)
                 <div id="observation-{{ $observation->uid }}" style="display: flex; gap: 12px; margin-bottom: 12px;">
-                    <img class="thumb" src="{{ asset('storage/'.$observation->photo_path) }}" alt="Observacion">
+                    <img class="thumb" src="{{ asset('storage/'.$observation->photo_path) }}" alt="Observación">
                     <div>
                         <strong>{{ optional($observation->observed_at)->format('Y-m-d H:i') }}</strong><br>
                         <span class="muted">{{ $observation->author?->handle ? '@'.$observation->author->handle : 'sin autor' }}</span><br>
@@ -59,23 +59,63 @@
                 </div>
             @endif
 
+            <h2>Historial</h2>
+            @if (($moderationEvents ?? collect())->isEmpty())
+                <p class="muted">Todavía no hay eventos registrados para este reporte.</p>
+            @else
+                <div style="display: grid; gap: 10px; margin-bottom: 20px;">
+                    @foreach ($moderationEvents as $event)
+                        @php
+                            $metadata = $event->metadata ?? [];
+                            $label = match ($event->event_type) {
+                                \App\Enums\EventType::RECORD_CREATED => 'Reporte creado',
+                                \App\Enums\EventType::OBSERVATION_CREATED => 'Observación añadida',
+                                \App\Enums\EventType::RECORD_UPDATED => 'Edición en panel',
+                                \App\Enums\EventType::RECORD_VERIFIED => match ($metadata['verification_status'] ?? null) {
+                                    'rejected' => 'Registro rechazado',
+                                    default => 'Registro verificado',
+                                },
+                                default => 'Evento',
+                            };
+                            $actor = $event->user?->handle ? '@'.$event->user->handle : ($event->role_snapshot ? 'rol '.$event->role_snapshot : 'sistema');
+                            $detail = null;
+
+                            if ($event->event_type === \App\Enums\EventType::RECORD_UPDATED) {
+                                $previous = $metadata['previous_verification_status'] ?? null;
+                                $current = $metadata['verification_status'] ?? null;
+                                $detail = ($previous && $current) ? "estado {$previous} → {$current}" : null;
+                            }
+                        @endphp
+                        <div style="border: 1px solid #dbe3d5; border-radius: 12px; padding: 12px; background: #fafcf8;">
+                            <div class="actions" style="justify-content: space-between; align-items: flex-start;">
+                                <strong>{{ $label }}</strong>
+                                <span class="muted">{{ optional($event->occurred_at)->format('Y-m-d H:i') }}</span>
+                            </div>
+                            <p class="muted" style="margin: 8px 0 0;">
+                                {{ $actor }}@if ($detail) · {{ $detail }}@endif
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
             <hr style="border: 0; border-top: 1px solid #dbe3d5; margin: 20px 0;">
 
             <h2>Validar ficha</h2>
             <form method="post" action="{{ route('admin.moderation.verify', $record->public_id) }}">
                 @csrf
                 <label>
-                    Nombre comun validado
+                    Nombre común validado
                     <input name="verified_common_name" value="{{ old('verified_common_name', $record->verified_common_name ?? $record->provisional_common_name) }}" required>
                     @error('verified_common_name')<span class="error">{{ $message }}</span>@enderror
                 </label>
                 <label>
-                    Nombre cientifico
+                    Nombre científico
                     <input name="verified_scientific_name" value="{{ old('verified_scientific_name', $record->verified_scientific_name) }}" required>
                     @error('verified_scientific_name')<span class="error">{{ $message }}</span>@enderror
                 </label>
                 <label>
-                    Descripcion revisada
+                    Descripción revisada
                     <textarea name="description" rows="5">{{ old('description', $record->description) }}</textarea>
                     @error('description')<span class="error">{{ $message }}</span>@enderror
                 </label>
@@ -88,7 +128,7 @@
             <form method="post" action="{{ route('admin.moderation.reject', $record->public_id) }}">
                 @csrf
                 <label>
-                    Nota interna o descripcion corregida
+                    Nota interna o descripción corregida
                     <textarea name="description" rows="4">{{ old('description', $record->description) }}</textarea>
                 </label>
                 <button class="danger" type="submit">Rechazar registro</button>
@@ -97,7 +137,7 @@
             @if (auth()->user()->isAdmin())
                 <hr style="border: 0; border-top: 1px solid #dbe3d5; margin: 20px 0;">
 
-                <h2>Edicion avanzada</h2>
+                <h2>Edición avanzada</h2>
                 <form method="post" action="{{ route('admin.moderation.update', $record->public_id) }}">
                     @csrf
                     <label>
@@ -116,7 +156,7 @@
                             @error('verification_status', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
                         </label>
                         <label>
-                            Condicion
+                            Condición
                             <select name="plant_condition">
                                 @foreach ($conditions as $condition)
                                     <option value="{{ $condition->value }}" @selected(old('plant_condition', $record->plant_condition?->value) === $condition->value)>{{ $condition->value }}</option>
@@ -127,12 +167,12 @@
                     </div>
                     <div class="grid">
                         <label>
-                            Nombre comun validado
+                            Nombre común validado
                             <input name="verified_common_name" value="{{ old('verified_common_name', $record->verified_common_name) }}">
                             @error('verified_common_name', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
                         </label>
                         <label>
-                            Nombre cientifico validado
+                            Nombre científico validado
                             <input name="verified_scientific_name" value="{{ old('verified_scientific_name', $record->verified_scientific_name) }}">
                             @error('verified_scientific_name', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
                         </label>
@@ -155,7 +195,7 @@
                         </label>
                     </div>
                     <label>
-                        Descripcion
+                        Descripción
                         <textarea name="description" rows="5">{{ old('description', $record->description) }}</textarea>
                         @error('description', 'recordUpdate')<span class="error">{{ $message }}</span>@enderror
                     </label>

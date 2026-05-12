@@ -2,6 +2,7 @@ package com.plantaria.app.data.session
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.plantaria.app.data.model.ApiUser
@@ -10,19 +11,31 @@ import kotlinx.coroutines.flow.map
 
 private val Context.sessionDataStore by preferencesDataStore(name = "plantaria_session")
 
+/**
+ * Capa de persistencia ligera de la sesión Android basada en DataStore.
+ *
+ * También gestiona la URL base de API y pequeñas preferencias de onboarding para evitar
+ * inconsistencias entre entornos local, túnel temporal y despliegue público.
+ */
 class SessionStore(
     context: Context,
     private val defaultApiBaseUrl: String,
 ) {
     private val dataStore = context.applicationContext.sessionDataStore
 
+    /** Flujo observable con la sesión reconstruida desde preferencias persistidas. */
     val session: Flow<AppSession> = dataStore.data.map { preferences ->
         val token = preferences[TOKEN]
         val handle = preferences[HANDLE]
+        val explicitApiBaseUrl = preferences[API_BASE_URL]
+        val apiBaseUrl = explicitApiBaseUrl ?: defaultApiBaseUrl
+        val isMapTourSeen = preferences[MAP_TOUR_SEEN] == true
 
         AppSession(
             token = token,
-            apiBaseUrl = defaultApiBaseUrl,
+            apiBaseUrl = apiBaseUrl,
+            isApiBaseUrlExplicit = explicitApiBaseUrl != null,
+            isMapTourSeen = isMapTourSeen,
             user = handle?.let {
                 ApiUser(
                     uid = preferences[UID],
@@ -58,20 +71,53 @@ class SessionStore(
         }
     }
 
+    suspend fun markMapTourSeen() {
+        dataStore.edit { preferences ->
+            preferences[MAP_TOUR_SEEN] = true
+        }
+    }
+
+    /**
+     * Guarda una URL base de API explícita y limpia la sesión previa para evitar mezclar tokens
+     * emitidos por distintos servidores.
+     */
+    suspend fun saveApiBaseUrl(apiBaseUrl: String) {
+        dataStore.edit { preferences ->
+            // Changing servers invalidates any existing session token/user data.
+            preferences[API_BASE_URL] = apiBaseUrl
+            clearUserSession(preferences)
+        }
+    }
+
+    /** Vuelve a la URL base por defecto de la build y descarta la sesión almacenada. */
+    suspend fun resetApiBaseUrlToDefault() {
+        dataStore.edit { preferences ->
+            preferences.remove(API_BASE_URL)
+            clearUserSession(preferences)
+        }
+    }
+
+    private fun clearUserSession(
+        preferences: androidx.datastore.preferences.core.MutablePreferences,
+    ) {
+        preferences.remove(TOKEN)
+        preferences.remove(UID)
+        preferences.remove(HANDLE)
+        preferences.remove(DISPLAY_NAME)
+        preferences.remove(EMAIL)
+        preferences.remove(PHOTO_PATH)
+        preferences.remove(PHOTO_URL)
+        preferences.remove(COUNTRY)
+        preferences.remove(PROVINCE)
+        preferences.remove(CITY)
+        preferences.remove(ROLE)
+        preferences.remove(STATUS)
+    }
+
     suspend fun clear() {
         dataStore.edit { preferences ->
-            preferences.remove(TOKEN)
-            preferences.remove(UID)
-            preferences.remove(HANDLE)
-            preferences.remove(DISPLAY_NAME)
-            preferences.remove(EMAIL)
-            preferences.remove(PHOTO_PATH)
-            preferences.remove(PHOTO_URL)
-            preferences.remove(COUNTRY)
-            preferences.remove(PROVINCE)
-            preferences.remove(CITY)
-            preferences.remove(ROLE)
-            preferences.remove(STATUS)
+            preferences.remove(API_BASE_URL)
+            clearUserSession(preferences)
         }
     }
 
@@ -100,5 +146,7 @@ class SessionStore(
         val CITY = stringPreferencesKey("city")
         val ROLE = stringPreferencesKey("role")
         val STATUS = stringPreferencesKey("status")
+        val API_BASE_URL = stringPreferencesKey("api_base_url")
+        val MAP_TOUR_SEEN = booleanPreferencesKey("map_tour_seen")
     }
 }

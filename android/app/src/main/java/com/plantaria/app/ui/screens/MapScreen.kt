@@ -3,11 +3,13 @@ package com.plantaria.app.ui.screens
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.location.Location
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.CancellationSignal
 import android.os.Handler
@@ -30,12 +32,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.LocationOn
@@ -46,28 +50,41 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -92,12 +109,41 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
 
 private const val FALLBACK_MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json"
 private const val DEFAULT_LATITUDE = 41.3874
 private const val DEFAULT_LONGITUDE = 2.1686
+private const val MAX_LOCATION_AGE_MS = 10 * 60 * 1000L
 private const val USER_LOCATION_MARKER = "__plantaria_user_location__"
 private const val SEARCH_LOCATION_MARKER = "__plantaria_search_location__"
+private const val CLUSTER_MARKER_PREFIX = "__plantaria_cluster__:"
+private val OSM_STANDARD_MAP_STYLE_JSON = """
+    {
+      "version": 8,
+      "name": "OpenStreetMap Standard",
+      "sources": {
+        "osm-standard": {
+          "type": "raster",
+          "tiles": [
+            "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          ],
+          "tileSize": 256,
+          "maxzoom": 19,
+          "attribution": "\u00A9 OpenStreetMap contributors"
+        }
+      },
+      "layers": [
+        {
+          "id": "osm-standard",
+          "type": "raster",
+          "source": "osm-standard",
+          "minzoom": 0,
+          "maxzoom": 19
+        }
+      ]
+    }
+""".trimIndent()
 
 private data class MapRecordPreview(
     val id: String,
@@ -124,6 +170,36 @@ private data class MapFocusOverride(
     val longitude: Double,
 )
 
+private enum class MapRecordFilter(val label: String) {
+    ALL("Todos"),
+    VERIFIED("Verificados"),
+    PENDING("Pendientes"),
+    REJECTED("Rechazados");
+
+    fun matches(status: String?): Boolean {
+        return when (this) {
+            ALL -> true
+            VERIFIED -> status == "verified"
+            PENDING -> status == null || status == "pending"
+            REJECTED -> status == "rejected"
+        }
+    }
+}
+
+private enum class MapBaseStyle(val label: String) {
+    OSM_STANDARD("OSM estándar"),
+    CURRENT("Mapa actual");
+
+    fun toBuilder(): Style.Builder {
+        return when (this) {
+            OSM_STANDARD -> Style.Builder().fromJson(OSM_STANDARD_MAP_STYLE_JSON)
+            CURRENT -> Style.Builder().fromUri(
+                BuildConfig.PLANTARIA_MAP_STYLE_URL.ifBlank { FALLBACK_MAP_STYLE_URL },
+            )
+        }
+    }
+}
+
 @Composable
 fun MapScreen(
     contentPadding: PaddingValues,
@@ -139,6 +215,8 @@ fun MapScreen(
     searchMessage: String?,
     error: String?,
     recordDetailError: String?,
+    isTourSeen: Boolean,
+    onTourSeen: () -> Unit,
     onRecordSearchQueryChange: (String) -> Unit,
     onRecordSearchSubmit: () -> Unit,
     onClearRecordSearch: () -> Unit,
@@ -152,7 +230,20 @@ fun MapScreen(
     onAddObservationForRecord: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val previews = records.map { record -> record.toMapPreview() }
+    val onTourSeenLatest by rememberUpdatedState(onTourSeen)
+    val onRefreshRecordsLatest by rememberUpdatedState(onRefreshRecords)
+    val allPreviews = records.map { record -> record.toMapPreview() }
+    var recordFilter by rememberSaveable { mutableStateOf(MapRecordFilter.ALL) }
+    var baseStyle by rememberSaveable {
+        mutableStateOf(
+            if (BuildConfig.PLANTARIA_MAP_STYLE_PICKER_ENABLED) {
+                MapBaseStyle.OSM_STANDARD
+            } else {
+                MapBaseStyle.CURRENT
+            },
+        )
+    }
+    val previews = allPreviews.filter { preview -> recordFilter.matches(preview.status) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var userLocation by remember { mutableStateOf<MapUserLocation?>(null) }
     var manualFocusOverride by remember { mutableStateOf<MapFocusOverride?>(null) }
@@ -170,6 +261,26 @@ fun MapScreen(
         emptyList()
     }
 
+    var tourStep by rememberSaveable { mutableStateOf(0) }
+    var showTour by rememberSaveable(isTourSeen) { mutableStateOf(!isTourSeen) }
+    if (showTour) {
+        TourDialog(
+            step = tourStep,
+            onNext = {
+                if (tourStep >= 3) {
+                    showTour = false
+                    onTourSeenLatest()
+                } else {
+                    tourStep += 1
+                }
+            },
+            onSkip = {
+                showTour = false
+                onTourSeenLatest()
+            },
+        )
+    }
+
     fun applyUserLocation(
         location: Location,
         centerOnUser: Boolean,
@@ -183,18 +294,18 @@ fun MapScreen(
                 latitude = location.latitude,
                 longitude = location.longitude,
             )
-            locationStatus = "Mapa centrado en tu ubicacion."
+            locationStatus = "Mapa centrado en tu ubicación."
         } else {
-            locationStatus = "Ubicacion disponible para calcular distancias."
+            locationStatus = "Ubicación disponible para calcular distancias."
         }
     }
 
     fun loadUserLocation(centerOnUser: Boolean) {
-        locationStatus = "Buscando ubicacion..."
+        locationStatus = "Buscando ubicación..."
         context.fetchPlantariaMapLocation(
             onLocation = { location -> applyUserLocation(location, centerOnUser) },
             onUnavailable = {
-                locationStatus = "No hay ubicacion disponible. Revisa GPS o permisos."
+                locationStatus = "No hay ubicación disponible. Revisa GPS o permisos."
             },
         )
     }
@@ -218,7 +329,7 @@ fun MapScreen(
         if (granted) {
             loadUserLocation(centerOnUser = true)
         } else {
-            locationStatus = "Permiso de ubicacion denegado."
+            locationStatus = "Permiso de ubicación denegado."
         }
     }
 
@@ -256,10 +367,34 @@ fun MapScreen(
             selectedRecord = selectedRecord,
             userLocation = userLocation,
             manualFocusOverride = manualFocusOverride,
+            baseStyle = baseStyle,
             searchResult = null,
-            onRecordSelected = { selectedId = it },
+            onRecordSelected = { token ->
+                if (token.startsWith(CLUSTER_MARKER_PREFIX)) {
+                    parseClusterMarker(token)?.let { focus ->
+                        selectedId = null
+                        manualFocusOverride = focus
+                    }
+                } else {
+                    selectedId = token
+                    manualFocusOverride = null
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
+
+        if (BuildConfig.PLANTARIA_MAP_STYLE_PICKER_ENABLED) {
+            CompactMapStyleSwitch(
+                checked = baseStyle == MapBaseStyle.CURRENT,
+                onCheckedChange = { checked ->
+                    baseStyle = if (checked) MapBaseStyle.CURRENT else MapBaseStyle.OSM_STANDARD
+                    selectedId = null
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -280,8 +415,18 @@ fun MapScreen(
                     selectedId = null
                     onClearRecordSearch()
                 },
-                onRefreshRecords = onRefreshRecords,
+                onRefreshRecords = {
+                    selectedId = null
+                    manualFocusOverride = null
+                    onRefreshRecordsLatest()
+                },
                 onRequestUserLocation = ::requestUserLocation,
+                recordFilter = recordFilter,
+                onRecordFilterChange = { next ->
+                    recordFilter = next
+                    selectedId = null
+                },
+                compactControlsEnabled = BuildConfig.PLANTARIA_MAP_STYLE_PICKER_ENABLED,
                 onRecordSelected = { record ->
                     selectedId = record.id
                     manualFocusOverride = null
@@ -341,6 +486,7 @@ private fun PlantariaMapView(
     selectedRecord: MapRecordPreview?,
     userLocation: MapUserLocation?,
     manualFocusOverride: MapFocusOverride?,
+    baseStyle: MapBaseStyle,
     searchResult: PlaceSearchResult?,
     onRecordSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -349,6 +495,7 @@ private fun PlantariaMapView(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
+    var requestedStyle by remember { mutableStateOf<MapBaseStyle?>(null) }
     val iconFactory = remember(context) { IconFactory.getInstance(context) }
     val userLocationIcon = remember(iconFactory, context) {
         iconFactory.fromDrawableBitmap(context, R.drawable.marker_user_location)
@@ -416,14 +563,22 @@ private fun PlantariaMapView(
                 getMapAsync { map ->
                     mapLibreMap = map
                     map.uiSettings.isCompassEnabled = false
-                    map.setStyle(BuildConfig.PLANTARIA_MAP_STYLE_URL.ifBlank { FALLBACK_MAP_STYLE_URL }) {
-                        styleLoaded = true
-                    }
                 }
             }
         },
         modifier = modifier,
     )
+
+    LaunchedEffect(mapLibreMap, baseStyle) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        requestedStyle = baseStyle
+        styleLoaded = false
+        map.setStyle(baseStyle.toBuilder()) {
+            if (requestedStyle == baseStyle) {
+                styleLoaded = true
+            }
+        }
+    }
 
     LaunchedEffect(mapLibreMap, styleLoaded, records, selectedRecord?.id, userLocation, manualFocusOverride, searchResult) {
         val map = mapLibreMap ?: return@LaunchedEffect
@@ -481,15 +636,15 @@ private fun MapLibreMap.renderRecords(
         true
     }
 
-    userLocation?.let { location ->
-        addMarker(
-            MarkerOptions()
-                .position(location.toLatLng())
-                .title("Tu ubicacion actual")
-                .icon(userLocationIcon)
-                .snippet(USER_LOCATION_MARKER),
+        userLocation?.let { location ->
+            addMarker(
+                MarkerOptions()
+                    .position(location.toLatLng())
+                    .title("Tu ubicación actual")
+                    .icon(userLocationIcon)
+                    .snippet(USER_LOCATION_MARKER),
             )
-    }
+        }
 
     searchResult?.let { place ->
         addMarker(
@@ -501,13 +656,32 @@ private fun MapLibreMap.renderRecords(
         )
     }
 
-    records.forEach { record ->
-        addMarker(
-            MarkerOptions()
-                .position(record.toLatLng())
-                .title(record.name)
-                .snippet(record.id),
-        )
+    val buckets = records.groupBy { record ->
+        val bucketLat = (record.latitude * 1000).toInt()
+        val bucketLng = (record.longitude * 1000).toInt()
+        "$bucketLat:$bucketLng"
+    }
+
+    buckets.values.forEach { bucket ->
+        if (bucket.size >= 3) {
+            val latitude = bucket.map { it.latitude }.average()
+            val longitude = bucket.map { it.longitude }.average()
+            addMarker(
+                MarkerOptions()
+                    .position(LatLng(latitude, longitude))
+                    .title("${bucket.size} registros")
+                    .snippet(CLUSTER_MARKER_PREFIX + latitude + "," + longitude),
+            )
+        } else {
+            bucket.forEach { record ->
+                addMarker(
+                    MarkerOptions()
+                        .position(record.toLatLng())
+                        .title(record.name)
+                        .snippet(record.id),
+                )
+            }
+        }
     }
 
     val target = selectedRecord?.toLatLng()
@@ -538,6 +712,9 @@ private fun MapControlPanel(
     onClearRecordSearch: () -> Unit,
     onRefreshRecords: () -> Unit,
     onRequestUserLocation: () -> Unit,
+    recordFilter: MapRecordFilter,
+    onRecordFilterChange: (MapRecordFilter) -> Unit,
+    compactControlsEnabled: Boolean,
     onRecordSelected: (MapRecordPreview) -> Unit,
     onOpenRecord: (MapRecordPreview) -> Unit,
 ) {
@@ -572,21 +749,36 @@ private fun MapControlPanel(
                 IconButton(onClick = onRequestUserLocation) {
                     Icon(
                         imageVector = Icons.Outlined.MyLocation,
-                        contentDescription = "Mi ubicacion",
+                        contentDescription = "Mi ubicación",
                     )
                 }
             }
             SearchField(
                 label = "Buscar plantas",
                 value = recordSearchQuery,
-                placeholder = "Nombre comun o cientifico",
+                placeholder = "Nombre común o científico",
                 onValueChange = onRecordSearchQueryChange,
                 onSubmit = onRecordSearchSubmit,
                 onClear = onClearRecordSearch,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                userLocation?.let {
-                    TextChip("Tu posicion")
+            if (compactControlsEnabled) {
+                MapFilterDropdown(
+                    selected = recordFilter,
+                    hasUserLocation = userLocation != null,
+                    onSelected = onRecordFilterChange,
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    userLocation?.let {
+                        TextChip("Tu posición")
+                    }
+                    RecordFilterChips(
+                        selected = recordFilter,
+                        onSelected = onRecordFilterChange,
+                    )
                 }
             }
             RecordSearchResultsCard(
@@ -595,6 +787,116 @@ private fun MapControlPanel(
                 userLocation = userLocation,
                 onRecordSelected = onRecordSelected,
                 onOpenRecord = onOpenRecord,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactMapStyleSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        tonalElevation = 4.dp,
+        shadowElevation = 3.dp,
+    ) {
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+                .semantics { contentDescription = "Cambiar tipo de mapa" },
+        )
+    }
+}
+
+@Composable
+private fun MapFilterDropdown(
+    selected: MapRecordFilter,
+    hasUserLocation: Boolean,
+    onSelected: (MapRecordFilter) -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = "Filtro: ${selected.label}",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(if (hasUserLocation) "Tu posición activa" else "Sin posición")
+                },
+                onClick = {},
+                enabled = false,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.MyLocation,
+                        contentDescription = null,
+                    )
+                },
+            )
+            MapRecordFilter.values().forEach { filter ->
+                DropdownMenuItem(
+                    text = { Text(filter.label) },
+                    onClick = {
+                        expanded = false
+                        onSelected(filter)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = when (filter) {
+                                MapRecordFilter.ALL -> Icons.Outlined.LocationOn
+                                MapRecordFilter.VERIFIED -> Icons.Outlined.CheckCircle
+                                MapRecordFilter.PENDING -> Icons.Outlined.Schedule
+                                MapRecordFilter.REJECTED -> Icons.Outlined.Cancel
+                            },
+                            contentDescription = null,
+                        )
+                    },
+                    trailingIcon = {
+                        if (filter == selected) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordFilterChips(
+    selected: MapRecordFilter,
+    onSelected: (MapRecordFilter) -> Unit,
+) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        MapRecordFilter.values().forEach { filter ->
+            FilterChip(
+                selected = filter == selected,
+                onClick = { onSelected(filter) },
+                label = { Text(filter.label) },
+                colors = FilterChipDefaults.filterChipColors(),
             )
         }
     }
@@ -781,12 +1083,12 @@ private fun RecordPreviewCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = "Tu posicion: ${it.coordinatesText}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = "Tu posición: ${it.coordinatesText}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
@@ -912,7 +1214,7 @@ private fun PlaceFocusCard(
             )
             userLocation?.let {
                 Text(
-                    text = "Tu ubicacion: ${it.coordinatesText}",
+                    text = "Tu ubicación: ${it.coordinatesText}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1014,6 +1316,8 @@ private fun RecordProfileContent(
     record: PlantRecord,
     onAddObservation: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val historyObservations = record.historyObservations()
 
     Column(
@@ -1063,8 +1367,8 @@ private fun RecordProfileContent(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                record.verifiedCommonName?.let { MetadataLine(label = "Nombre comun", value = it) }
-                record.verifiedScientificName?.let { MetadataLine(label = "Nombre cientifico", value = it) }
+                record.verifiedCommonName?.let { MetadataLine(label = "Nombre común", value = it) }
+                record.verifiedScientificName?.let { MetadataLine(label = "Nombre científico", value = it) }
                 MetadataLine(label = "Nombre provisional", value = record.provisionalCommonName)
                 record.author?.handle?.let { MetadataLine(label = "Autor", value = "@$it") }
                 record.createdAt?.let { MetadataLine(label = "Creado", value = it.toReadableDateTime()) }
@@ -1072,7 +1376,25 @@ private fun RecordProfileContent(
                     label = "Coordenadas",
                     value = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude),
                 )
-                record.description?.let { DescriptionLine(label = "Descripcion", value = it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val text = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude)
+                            clipboard.setText(AnnotatedString(text))
+                        },
+                    ) {
+                        Text("Copiar")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                        },
+                    ) {
+                        Text("Google Maps")
+                    }
+                }
+                record.description?.let { DescriptionLine(label = "Descripción", value = it) }
             }
         }
 
@@ -1085,7 +1407,7 @@ private fun RecordProfileContent(
                 contentDescription = null,
             )
             Text(
-                text = "Anadir observacion",
+                text = "Añadir observación",
                 modifier = Modifier.padding(start = 8.dp),
             )
         }
@@ -1115,7 +1437,7 @@ private fun EmptyHistoryCard() {
         shape = RoundedCornerShape(8.dp),
     ) {
         Text(
-            text = "Todavia no hay observaciones cargadas en esta ficha.",
+            text = "Todavía no hay observaciones cargadas en esta ficha.",
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1146,7 +1468,7 @@ private fun ObservationTimelineCard(
             )
             RemotePlantariaImage(
                 imageUrl = observation.photoUrl,
-                contentDescription = "Foto de observacion",
+                contentDescription = "Foto de observación",
                 fallbackIcon = Icons.Outlined.LocationOn,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1156,7 +1478,7 @@ private fun ObservationTimelineCard(
             )
             if (observation.note.isNullOrBlank()) {
                 Text(
-                    text = "Sin descripcion.",
+                    text = "Sin descripción.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1241,6 +1563,8 @@ private fun RecordDetailContent(
     record: PlantRecord,
     onAddObservation: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val historyObservations = record.historyObservations()
 
     RemotePlantariaImage(
@@ -1268,23 +1592,41 @@ private fun RecordDetailContent(
             contentDescription = null,
         )
         Text(
-            text = "Anadir observacion",
+            text = "Añadir observación",
             modifier = Modifier.padding(start = 8.dp),
         )
     }
 
     DetailLine(label = "ID", value = record.publicId)
-    record.verifiedScientificName?.let { DetailLine(label = "Nombre cientifico", value = it) }
-    record.verifiedCommonName?.let { DetailLine(label = "Nombre comun verificado", value = it) }
+    record.verifiedScientificName?.let { DetailLine(label = "Nombre científico", value = it) }
+    record.verifiedCommonName?.let { DetailLine(label = "Nombre común verificado", value = it) }
     DetailLine(label = "Nombre provisional", value = record.provisionalCommonName)
-    record.description?.let { DetailLine(label = "Descripcion", value = it) }
+    record.description?.let { DetailLine(label = "Descripción", value = it) }
     record.author?.handle?.let { DetailLine(label = "Autor", value = "@$it") }
     DetailLine(
         label = "Coordenadas",
         value = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude),
     )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = {
+                val text = String.format(Locale.US, "%.5f, %.5f", record.latitude, record.longitude)
+                clipboard.setText(AnnotatedString(text))
+            },
+        ) {
+            Text("Copiar")
+        }
+        OutlinedButton(
+            onClick = {
+                val uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${record.latitude},${record.longitude}")
+                context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+            },
+        ) {
+            Text("Google Maps")
+        }
+    }
     record.createdAt?.let { DetailLine(label = "Creado", value = it.toReadableDateTime()) }
-    record.latestObservationAt?.let { DetailLine(label = "Ultima observacion", value = it.toReadableDateTime()) }
+    record.latestObservationAt?.let { DetailLine(label = "Última observación", value = it.toReadableDateTime()) }
 
     Text(
         text = "Observaciones (${historyObservations.size})",
@@ -1293,7 +1635,7 @@ private fun RecordDetailContent(
     )
     if (historyObservations.isEmpty()) {
         Text(
-            text = "Todavia no hay observaciones cargadas en esta ficha.",
+            text = "Todavía no hay observaciones cargadas en esta ficha.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -1313,7 +1655,7 @@ private fun ObservationRow(observation: PlantObservation) {
     ) {
         RemotePlantariaImage(
             imageUrl = observation.photoUrl,
-            contentDescription = "Foto de observacion",
+            contentDescription = "Foto de observación",
             fallbackIcon = Icons.Outlined.LocationOn,
             modifier = Modifier
                 .size(70.dp)
@@ -1503,7 +1845,7 @@ private fun EmptyMapCard(
             )
             Text(
                 text = if (searchQuery.isBlank()) {
-                    "Todavia no hay reportes visibles. Cuando existan, apareceran como pins en este mapa."
+                    "Todavía no hay reportes visibles. Cuando existan, aparecerán como pines en este mapa."
                 } else {
                     "No se encontraron registros para \"$searchQuery\". Prueba otra planta, otro ID o limpia el filtro."
                 },
@@ -1547,12 +1889,25 @@ private fun EmptyMapCard(
 @Composable
 private fun StatusChip(status: String?) {
     val verified = status == "verified"
+    val rejected = status == "rejected"
     AssistChip(
         onClick = {},
-        label = { Text(if (verified) "Verificado" else "Pendiente") },
+        label = {
+            Text(
+                when {
+                    verified -> "Verificado"
+                    rejected -> "Rechazado"
+                    else -> "Pendiente"
+                }
+            )
+        },
         leadingIcon = {
             Icon(
-                imageVector = if (verified) Icons.Outlined.CheckCircle else Icons.Outlined.Schedule,
+                imageVector = when {
+                    verified -> Icons.Outlined.CheckCircle
+                    rejected -> Icons.Outlined.Cancel
+                    else -> Icons.Outlined.Schedule
+                },
                 contentDescription = null,
             )
         },
@@ -1633,6 +1988,7 @@ private fun Context.latestKnownPlantariaMapLocation(): Location? {
     val allowFineLocation = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     return locationManager.latestKnownPlantariaMapLocation(allowFineLocation)
+        ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
 }
 
 @SuppressLint("MissingPermission")
@@ -1649,7 +2005,10 @@ private fun Context.fetchPlantariaMapLocation(
     val allowFineLocation = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     val provider = locationManager.bestPlantariaMapProvider(allowFineLocation)
     if (provider == null) {
-        locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+        locationManager.latestKnownPlantariaMapLocation(allowFineLocation)
+            ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+            ?.let(onLocation)
+            ?: onUnavailable()
         return
     }
 
@@ -1661,16 +2020,34 @@ private fun Context.fetchPlantariaMapLocation(
                 Handler(Looper.getMainLooper()).asExecutor(),
             ) { location ->
                 location
+                    ?.takeIf { candidate -> candidate.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
                     ?.let(onLocation)
-                    ?: locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation)
+                    ?: locationManager.latestKnownPlantariaMapLocation(allowFineLocation)
+                        ?.takeIf { candidate -> candidate.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+                        ?.let(onLocation)
                     ?: onUnavailable()
             }
         }.onFailure {
-            locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+            locationManager.latestKnownPlantariaMapLocation(allowFineLocation)
+                ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+                ?.let(onLocation)
+                ?: onUnavailable()
         }
     } else {
-        locationManager.latestKnownPlantariaMapLocation(allowFineLocation)?.let(onLocation) ?: onUnavailable()
+        locationManager.latestKnownPlantariaMapLocation(allowFineLocation)
+            ?.takeIf { location -> location.isRecent(maxAgeMs = MAX_LOCATION_AGE_MS) }
+            ?.let(onLocation)
+            ?: onUnavailable()
     }
+}
+
+private fun Location.isRecent(maxAgeMs: Long): Boolean {
+    if (time <= 0L) {
+        return false
+    }
+
+    val age = System.currentTimeMillis() - time
+    return age in 0..maxAgeMs
 }
 
 private fun LocationManager.bestPlantariaMapProvider(allowFineLocation: Boolean): String? {
@@ -1703,4 +2080,54 @@ private fun plantariaMapProviders(allowFineLocation: Boolean): List<String> {
 
 private fun Handler.asExecutor(): java.util.concurrent.Executor {
     return java.util.concurrent.Executor { command -> post(command) }
+}
+
+private fun parseClusterMarker(value: String): MapFocusOverride? {
+    if (!value.startsWith(CLUSTER_MARKER_PREFIX)) {
+        return null
+    }
+
+    val payload = value.removePrefix(CLUSTER_MARKER_PREFIX)
+    val parts = payload.split(',', limit = 2)
+    if (parts.size != 2) {
+        return null
+    }
+
+    val latitude = parts[0].toDoubleOrNull() ?: return null
+    val longitude = parts[1].toDoubleOrNull() ?: return null
+    if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) {
+        return null
+    }
+
+    return MapFocusOverride(latitude = latitude, longitude = longitude)
+}
+
+@Composable
+private fun TourDialog(
+    step: Int,
+    onNext: () -> Unit,
+    onSkip: () -> Unit,
+) {
+    val steps = listOf(
+        "Toca el botón de ubicación para centrar el mapa en tu posición.",
+        "Usa el buscador para filtrar por nombre de planta.",
+        "Toca un pin para ver el resumen y pulsa \"Abrir\" para ver la ficha completa.",
+        "Para crear un reporte u observación, entra en la pestaña \"Acciones\".",
+    )
+
+    AlertDialog(
+        onDismissRequest = onSkip,
+        title = { Text("Tour rápido (${step + 1}/${steps.size})") },
+        text = { Text(steps.getOrNull(step).orEmpty()) },
+        confirmButton = {
+            TextButton(onClick = onNext) {
+                Text(if (step >= steps.lastIndex) "Entendido" else "Siguiente")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onSkip) {
+                Text("Saltar")
+            }
+        },
+    )
 }

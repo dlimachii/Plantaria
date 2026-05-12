@@ -1,58 +1,106 @@
 # Plantaria
 
-`Plantaria` es un TFC de DAM orientado a una plataforma colaborativa de plantas geolocalizadas: un usuario registra una planta con foto y ubicacion, otros usuarios pueden añadir observaciones temporales, y moderadores o administradores validan la informacion botanica.
+Plantaria es el codigo final del TFG: una app Android para registrar plantas geolocalizadas con foto, mapa, observaciones y actividad de usuario, junto a un backend Laravel con API REST, panel web de administracion, moderacion, analitica y estimacion de huella de carbono del servidor.
 
-## Estado del MVP
-
-El proyecto ya contiene un flujo real de punta a punta:
-
-- backend Laravel con Sanctum, API, panel web de moderacion/admin y subida de fotos;
-- PostgreSQL/PostGIS local con Docker Compose;
-- cliente Android Kotlin/Jetpack Compose con MapLibre, login, mapa, reportes, observaciones, camara, galeria y GPS;
-- modulo auxiliar `analytics/` en Python+pandas conectado al panel admin;
-- scripts de apoyo para prueba movil.
-
-La prioridad actual es estabilizar, validar en telefono fisico y documentar la entrega. iOS, web publica completa e IA de identificacion vegetal quedan como fases posteriores.
-
-## Estructura
+Esta carpeta junta la version de produccion del VPS con la version final Android local. La build Android `prod` apunta por defecto a:
 
 ```text
-backend/    API Laravel, panel web y tests feature
-android/    app Android Kotlin + Jetpack Compose
-analytics/  scripts Python para analitica auxiliar
-scripts/    utilidades de arranque e instalacion de APK
-Contexto/   memoria tecnica viva entre sesiones
-compose.yaml PostgreSQL/PostGIS local
+https://api.dlimachii.com/api/
 ```
 
-## Arranque rapido
+El panel web de produccion, si el VPS sigue activo, esta en:
 
-Desde la raiz del repo:
+```text
+https://api.dlimachii.com/admin
+```
+
+## Contenido
+
+```text
+backend/       API Laravel, Sanctum, panel admin, moderacion, analitica y tests
+android/       Cliente Android Kotlin + Jetpack Compose + MapLibre
+analytics/     Scripts Python/pandas usados por el panel de analitica
+scripts/       Scripts de instalacion, validacion, APK y utilidades de entrega
+deploy/vps/    Despliegue opcional de referencia para VPS con Docker/Caddy
+docs/          Documentacion tecnica, API, demo y validacion movil
+Contexto/      Notas historicas y contexto tecnico del proyecto
+compose.yaml   PostgreSQL/PostGIS local para desarrollo o pruebas
+```
+
+No se incluyen dependencias generadas ni secretos: `vendor/`, `node_modules/`, `.gradle/`, builds Android, `.env`, bases SQLite locales, logs y storage publico estan ignorados por Git.
+
+## Funcionalidades principales
+
+- Registro/login Android contra API Laravel con tokens Sanctum.
+- Mapa MapLibre con registros de plantas, marcadores, clustering sencillo, GPS, busqueda y ficha de detalle.
+- Selector compacto de vista de mapa en Android para alternar entre el estilo actual y OSM estandar.
+- Creacion de reportes con foto, coordenadas, descripcion y nombre provisional.
+- Observaciones temporales sobre registros existentes.
+- Perfil y actividad de usuario.
+- Panel admin web para dashboard, moderacion, usuarios, flags y asistente interno.
+- Bloque de huella digital/recursos en `/admin`: CPU, memoria, disco, energia estimada y CO2 estimado.
+- Analitica auxiliar con Python/pandas.
+
+## Requisitos
+
+- PHP 8.3 o superior.
+- Composer.
+- Node.js y npm.
+- PostgreSQL con PostGIS, o Docker para levantarlo con `compose.yaml`.
+- Python 3 con `venv`.
+- JDK 17.
+- Android SDK instalado para compilar APKs.
+- Android Debug Bridge (`adb`) si se quiere instalar en movil fisico.
+
+## Instalacion rapida
+
+Desde la raiz de esta carpeta:
 
 ```bash
-./scripts/start_mobile_stack.sh
+chmod +x scripts/install_project.sh
+./scripts/install_project.sh
 ```
 
-Ese comando levanta PostGIS, migra y rellena datos demo, prepara storage e inicia Laravel en:
+El script instala dependencias de backend, Android y analitica:
+
+- `composer install` en `backend/`.
+- `npm ci` en `backend/`.
+- crea `backend/.env` desde `backend/.env.example` si no existe.
+- genera `APP_KEY` si falta.
+- prepara `php artisan storage:link`.
+- resuelve Gradle con `android/gradlew --version`.
+- crea `analytics/.venv` e instala `analytics/requirements.txt`.
+
+Opciones utiles:
+
+```bash
+./scripts/install_project.sh --build-android
+./scripts/install_project.sh --migrate
+./scripts/install_project.sh --skip-android
+./scripts/install_project.sh --skip-backend
+./scripts/install_project.sh --skip-analytics
+```
+
+`--migrate` requiere PostgreSQL funcionando y estas variables configuradas en `backend/.env`:
 
 ```text
-http://0.0.0.0:8000
+PLANTARIA_ADMIN_PASSWORD=
+PLANTARIA_DEMO_PASSWORD=
+PLANTARIA_USER_PASSWORD=
+PLANTARIA_MOD_PASSWORD=
 ```
 
-URLs de API para Android:
-
-- emulador: `http://10.0.2.2:8000/api/`
-- movil por USB con `adb reverse`: `http://127.0.0.1:8000/api/`
-- movil por Wi-Fi: `http://IP_DEL_PC:8000/api/`
+Las contrasenas reales no se publican en el repositorio.
 
 ## Backend
 
-Arranque manual:
+Arranque local recomendado:
 
 ```bash
 docker compose up -d postgis
 cd backend
 composer install
+npm ci
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
@@ -60,160 +108,119 @@ php artisan storage:link
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-Panel admin:
+URLs locales:
 
 ```text
-http://127.0.0.1:8000/admin
+API:         http://127.0.0.1:8000/api/
+Admin web:   http://127.0.0.1:8000/admin
 ```
 
-Mas detalle en `backend/README.md`.
-
-Analitica pandas del panel:
-
-```bash
-cd backend
-php artisan plantaria:analytics:build
-```
-
-Ese comando exporta datos a `storage/app/analytics/input`, calcula `storage/app/analytics/output/admin_dashboard.json` con pandas y lo enseña en `/admin`. El asistente local de `/admin/assistant` usa Ollama si `OLLAMA_BASE_URL` y `OLLAMA_MODEL` apuntan a un modelo disponible.
-
-## Android
-
-Compilar APK debug:
-
-```bash
-cd android
-./gradlew :app:assembleDebug
-```
-
-Instalar en movil fisico:
-
-Desde Windows PowerShell, que es donde tu telefono queda visible por ADB:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu\home\aviddrianimachie\CEAC\Proyecto\scripts\install_debug_apk.ps1"
-```
-
-Comandos manuales equivalentes en PowerShell:
-
-```powershell
-$Apk = wsl wslpath -w /home/aviddrianimachie/CEAC/Proyecto/android/app/build/outputs/apk/debug/app-debug.apk
-adb devices
-adb reverse tcp:8000 tcp:8000
-adb install -r $Apk
-```
-
-El script Bash queda solo como alternativa si ADB detecta el dispositivo desde WSL:
-
-```bash
-../scripts/install_debug_apk.sh
-```
-
-APK generado:
-
-```text
-android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-Mas detalle en `android/README.md`.
-
-## Datos demo
-
-El seeder deja cuentas de prueba por rol:
-
-```text
-USER  · plantaria_user  / PlantariaUser1
-MOD   · plantaria_mod   / PlantariaMod1
-ADMIN · plantaria_admin / PlantariaAdmin1
-```
-
-Tambien existe `plantaria_demo / PlantariaDemo1` como usuario de demo con registros cargados alrededor de Barcelona.
-
-La cuenta admin principal se puede configurar con:
-
-```text
-PLANTARIA_ADMIN_HANDLE
-PLANTARIA_ADMIN_EMAIL
-PLANTARIA_ADMIN_PASSWORD
-```
-
-## Documentacion de entrega
-
-- `docs/GUIA_DEMO.md`: guion para ensenar el MVP.
-- `docs/CHECKLIST_VALIDACION_MOVIL.md`: lista de prueba fisica del APK.
-- `docs/MEMORIA_TFC.md`: base tecnica para memoria o defensa.
-- `docs/API.md`: referencia practica de endpoints.
-- `docs/BACKUP_ONEDRIVE.md`: empaquetado limpio del proyecto para OneDrive.
-- `DocumentoTFG/TFG DAM_DAW.docx`: plantilla original del documento TFG.
-- `DocumentoTFG/Plantaria_TFG_DAM.docx`: documento generado y versionado como referencia para la estructura y contexto del TFG.
-- `scripts/generate_tfg_docx.py`: generador reproducible del DOCX de Plantaria.
-
-Regenerar el documento TFG:
-
-```bash
-python3 scripts/generate_tfg_docx.py
-```
-
-## Validacion
-
-Backend:
+Tests:
 
 ```bash
 cd backend
 php artisan test
 ```
 
-Android:
+Analitica pandas:
+
+```bash
+cd backend
+php artisan plantaria:analytics:build
+```
+
+## Android
+
+La variante principal es `prod`. Usa el nombre `Plantaria`, habilita el selector de vista de mapa y apunta a `https://api.dlimachii.com/api/`.
+
+Compilar APK `prod` debug:
 
 ```bash
 cd android
-./gradlew :app:assembleDebug
+./gradlew :app:assembleProdDebug
 ```
 
-Scripts:
+Salida:
+
+```text
+android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
+```
+
+Tambien existen variantes de demo:
 
 ```bash
-bash -n scripts/start_mobile_stack.sh
-bash -n scripts/install_debug_apk.sh
+./gradlew :app:assembleDemoADebug
+./gradlew :app:assembleDemoBDebug
+./gradlew :app:assembleDemoCDebug
+./gradlew :app:assembleDemoPJDebug
 ```
 
-Validacion integral:
+Instalacion por scripts:
+
+```bash
+scripts/install_debug_apk.sh
+```
+
+En Windows/PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install_debug_apk.ps1
+```
+
+## Configuracion de entorno
+
+El backend usa `backend/.env.example` como plantilla. Para produccion real se uso el dominio:
+
+```text
+APP_URL=https://api.dlimachii.com
+CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1:8000,http://localhost:3000,https://dlimachii.com,https://api.dlimachii.com
+```
+
+El archivo `.env` no debe subirse a Git. Si se despliega en otro servidor, cambiar `APP_URL`, credenciales de base de datos, claves y passwords de demo/admin.
+
+## Despliegue opcional
+
+No hace falta desplegar para revisar el TFG. La referencia de despliegue esta en:
+
+```text
+deploy/vps/
+docs/DEPLOY_VPS.md
+```
+
+El proyecto final documenta el despliegue real usado con `api.dlimachii.com`, pero los certificados, `.env` real, base de datos, storage de fotos y credenciales no forman parte del codigo subido.
+
+## Documentacion
+
+- `docs/API.md`: endpoints principales.
+- `docs/GUIA_DEMO.md`: guion de demostracion.
+- `docs/CHECKLIST_VALIDACION_MOVIL.md`: pruebas sobre telefono fisico.
+- `docs/MEMORIA_TFC.md`: base tecnica para la memoria.
+- `docs/REFERENCIA_TECNICA.md`: resumen de arquitectura.
+- `android/README.md`: detalles del cliente Android.
+- `backend/README.md`: detalles del backend.
+- `contexto_proyecto.md`: contexto amplio del estado final.
+
+## Validacion
+
+Comandos principales:
 
 ```bash
 ./scripts/validate_project.sh
+cd backend && php artisan test
+cd android && ./gradlew :app:assembleProdDebug
+bash -n scripts/*.sh
 ```
 
-Perfilado rapido para optimizacion:
+Comprobaciones concretas de esta version final:
 
-```bash
-./scripts/profile_app_performance.sh
-```
+- `backend/app/Services/ServerFootprintSnapshot.php` existe y alimenta el bloque de huella de carbono del dashboard.
+- `backend/resources/views/admin/dashboard.blade.php` muestra recursos del servidor y CO2 estimado.
+- `android/app/build.gradle.kts` configura `prod` con `https://api.dlimachii.com/api/`.
+- `android/app/src/main/java/com/plantaria/app/ui/screens/MapScreen.kt` incluye el selector de vista de mapa.
 
-Ese script mide tiempos de endpoints usados por la app, revisa el tamano del APK debug y, si hay un movil por ADB con la app abierta, muestra un snapshot basico de memoria/render. Variables utiles:
+## Notas de seguridad
 
-- `PLANTARIA_PROFILE_RUNS=10` cambia el numero de iteraciones.
-- `PLANTARIA_PROFILE_BASE_URL=http://127.0.0.1:8000` apunta a una API ya arrancada.
-- `PLANTARIA_PROFILE_PORT=8020` cambia el puerto temporal si el script arranca Laravel.
-
-Variables utiles:
-
-- `SKIP_ANDROID_BUILD=1` salta la compilacion Android.
-- `SKIP_POSTGIS_SMOKE=1` salta la prueba HTTP contra PostgreSQL/PostGIS.
-- `PLANTARIA_VALIDATE_PORT=8010` cambia el puerto temporal de validacion.
-
-Estado reciente:
-
-```text
-php artisan test: 38 tests, 176 assertions
-./gradlew :app:assembleDebug: BUILD SUCCESSFUL
-php artisan plantaria:analytics:build: correcto
-./scripts/profile_app_performance.sh: correcto
-```
-
-La validacion integral tambien comprueba que los tokens de usuarios no activos quedan bloqueados, que las rutas admin API respetan roles, que la actividad propia de usuario no mezcla registros globales y que la exportacion de analitica genera datasets.
-
-## Pendiente real antes de entrega
-
-- Revalidar en telefono fisico el APK actual.
-- Probar login, mapa, busqueda, GPS, camara, galeria, subida de foto, creacion de reporte y observacion.
-- Mantener el estilo actual de mapa como demo/desarrollo documentado; si el producto se publicase, sustituirlo por proveedor final de tiles o hosting propio.
+- No subir `backend/.env`, `android/local.properties`, `backend/vendor/`, `backend/node_modules/`, builds Android ni storage publico.
+- Las passwords de usuarios demo/admin se configuran en entorno.
+- El asistente SQL admin esta limitado a lectura.
+- CORS se configura por variable de entorno y en produccion queda acotado a dominios concretos.

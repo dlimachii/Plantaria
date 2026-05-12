@@ -1,5 +1,111 @@
 # Registro de sesiones
 
+## 2026-05-10 20:47 CEST
+
+### Corrección de servidor Android `prod` + revisión VPS
+
+- Android: se confirmó que la variante `prod` compila contra `https://api.dlimachii.com/api/`.
+- Android: se desactivó `PLANTARIA_BOOTSTRAP_CONFIG_URL` porque `https://dlimachii.com/plantaria.json` no devuelve JSON válido del proyecto.
+- Android: si el móvil conserva una URL antigua de desarrollo (`127.0.0.1`, `10.0.2.2`, `localhost` o `0.0.0.0`) en `DataStore`, la app la elimina al arrancar y vuelve al servidor público por defecto.
+- Scripts/docs: `install_debug_apk.sh`, `install_debug_apk.ps1` y `android/README.md` quedan alineados con el comportamiento real; `adb reverse` ya no se presenta como cambio automático de servidor.
+- VPS: `https://api.dlimachii.com/api/records?limit=1` responde `200 OK` con JSON real; en el servidor el repo está en `main` sobre el commit `e65c985`.
+- Verificación: `./gradlew :app:assembleProdDebug` termina en `BUILD SUCCESSFUL`.
+
+## 2026-05-10 21:20 CEST
+
+### Rescate controlado del árbol sucio del VPS
+
+- Se creó backup del árbol de trabajo del VPS en `/root/plantaria-backups/20260510-190443/` con `git-status.txt`, `working-tree.patch` y `backend-working-tree.tgz`.
+- Se verificó que el VPS está en `main` sobre `e65c985`, pero con cambios manuales sin commit en controladores y vistas del panel admin/moderación.
+- Se comparó el diff del VPS con el workspace local: la mayoría de cambios ya estaban también en local; los principales desajustes eran variantes menores de textos y la gestión visible de `OLLAMA_ENABLED`.
+- Se recuperó exactamente `backend/package-lock.json` desde el VPS para que el repo refleje el estado real del despliegue y no un lock regenerado con otra toolchain.
+- `backend/resources/views/admin/show.blade.php` quedó fuera de integración porque es un duplicado no referenciado por rutas; sigue preservado dentro del backup del VPS por si más adelante hace falta revisarlo.
+- Se revalidó el backend en local con `php artisan test --filter=AdminPanelTest` y `php artisan test`: ambos pasan (`38 tests`, `176 assertions`).
+
+## 2026-05-08 23:48 CEST
+
+### Notificación de verificación (actividad de usuario)
+
+- Backend: cuando un moderador/admin verifica o rechaza un reporte, además del evento del moderador se registra un evento `record_verified` también para el autor del reporte (visible en `/me/activity`).
+- Backend: cuando un admin edita un reporte desde el panel, se registra también un evento `record_updated` para el autor (con metadata de estado anterior → nuevo).
+- Android: la pantalla `Usuario` muestra mejor los eventos de `record_verified` rechazados (icono/color) y `record_updated`.
+- Despliegue: se copiaron los controladores actualizados al VPS (`161.35.204.224`) y se limpió caché con `php artisan optimize:clear`.
+- Verificación: `php artisan test` pasa y `./gradlew :app:assembleProdDebug` compila.
+
+## 2026-05-08 22:56 CEST
+
+### Correcciones de textos + demo multi-APK + ubicación
+
+- Se corrigieron faltas ortográficas visibles en el panel admin web (Blade) y en mensajes del backend (acentos y tildes: moderación, contraseña, sesión, ubicación, analítica, etc.).
+- Se aplicaron las mismas correcciones en el VPS (`161.35.204.224`) por SSH en `/var/www/Plantaria/backend` y se limpiaron cachés con `php artisan optimize:clear`.
+- Android: se endureció la captura de ubicación para evitar ubicaciones antiguas/erróneas usando un límite de antigüedad (si la última ubicación es vieja, se considera no disponible).
+- Android: se añadieron flavors `prod`, `demoA`, `demoB`, `demoC` para poder instalar varias APKs en paralelo en el mismo móvil (evita desloguear/reloguear) y se actualizaron scripts/docs para compilar e instalar por flavor (`PLANTARIA_ANDROID_FLAVOR`).
+- Se verificó compilación con `./gradlew :app:assembleProdDebug`.
+
+## 2026-05-08 12:34 CEST
+
+### Chuleta tecnica del proyecto
+
+- Se inspecciono el stack real del repo (Laravel 13 + Sanctum, PostgreSQL/PostGIS en Docker, Android Compose + MapLibre, analitica Python+pandas).
+- Se creo `docs/BRIEF_TECNICO.md` como resumen operativo y justificable para defensa: arquitectura, librerias usadas y puntos de explicacion rapida.
+
+## 2026-05-07 14:18 CEST
+
+### Despliegue real en VPS + dominio para demo (API publica)
+
+- Objetivo: que el APK funcione sin depender de `adb reverse` ni backend local, con API accesible desde cualquier red.
+- VPS (DigitalOcean): IP `161.35.204.224`, Ubuntu `24.04.4 LTS`.
+- Dominio: se creo el registro DNS `A` para `api.dlimachii.com` apuntando a `161.35.204.224` (gestionado en Porkbun).
+- Backend desplegado desde GitHub (repo publico) en `/var/www/Plantaria` (Laravel en `/var/www/Plantaria/backend`).
+- Stack instalado en VPS: Nginx + PHP 8.3 FPM + PostgreSQL 16 + PostGIS.
+- PostgreSQL:
+  - rol/usuario `plantaria` con password `plantaria`;
+  - base de datos `plantaria` con owner `plantaria`;
+  - extension `postgis` habilitada (ademas del guard en migracion).
+- Laravel (produccion):
+  - `.env` ajustado a `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://api.dlimachii.com`;
+  - `php artisan key:generate --force`;
+  - `php artisan migrate --force --no-interaction` y `php artisan db:seed --force --no-interaction`;
+  - `php artisan storage:link` (uploads/fotos via `public/storage`).
+- Frontend del panel admin:
+  - se instalo Node 20 (NodeSource) porque Vite requiere Node >= 20;
+  - `npm install` y `npm run build` para generar `public/build/*`.
+- Nginx:
+  - vhost `api.dlimachii.com` apuntando a `/var/www/Plantaria/backend/public`;
+  - `client_max_body_size 25m` para subir fotos.
+- SSL:
+  - certbot + plugin nginx;
+  - HTTPS activo en `https://api.dlimachii.com` con renovacion automatica.
+- Smoke test:
+  - `https://api.dlimachii.com` devuelve `200 OK`;
+  - `https://api.dlimachii.com/api/records?limit=1` devuelve JSON con `data`.
+
+### Android (demo contra VPS)
+
+- La app puede guardar el servidor desde login (campo `Servidor (API)` + `Guardar servidor`) para evitar builds distintas.
+- La build debug se dejo apuntando por defecto a `https://api.dlimachii.com/api/` (para que funcione sin PC).
+- En dispositivos que tuvieran guardada la URL vieja `http://127.0.0.1:8000`, fue necesario actualizar el servidor desde login o borrar datos de la app.
+
+### Credenciales demo
+
+- App (demo): `plantaria_demo` (password configurado en `.env`, no publicado en repo).
+- Panel admin: `https://api.dlimachii.com/admin/login`:
+  - `plantaria_admin`
+  - `plantaria_mod`
+  - `plantaria_user`
+
+### Asistente IA (Ollama) visible pero no operativo en demo
+
+- Se incorporo `OLLAMA_ENABLED` para poder dejar el asistente visible en `/admin/assistant` sin ejecutar IA en la demo.
+- En el VPS se dejo `OLLAMA_ENABLED=false`.
+
+### Instalacion APK en movil (Windows + WSL)
+
+- Como `adb` no estaba en PATH, se uso `adb.exe` de Android SDK en Windows:
+  - ruta tipica: `$env:LOCALAPPDATA\\Android\\Sdk\\platform-tools\\adb.exe`.
+- La distro WSL no era `Ubuntu` sino `UbuntuBackup`; para instalar el APK se uso `\\wsl$\\UbuntuBackup\\...\\app-debug.apk` o `wslpath -w`.
+- Si ADB mostraba `unauthorized`, se acepto el popup de depuracion USB en el movil (o se revocaron autorizaciones y se reconecto el cable).
+
 ## 2026-05-04 20:29 CEST
 
 ### Limpieza de repositorio e indexación
@@ -189,10 +295,10 @@
 
 - Roles existentes confirmados: `user`, `mod` y `admin`.
 - `DatabaseSeeder` crea cuentas de prueba por rol:
-  - `plantaria_user / PlantariaUser1`;
-  - `plantaria_mod / PlantariaMod1`;
-  - `plantaria_admin / PlantariaAdmin1`.
-- Se mantiene `plantaria_demo / PlantariaDemo1` como usuario con datos demo.
+  - `plantaria_user`;
+  - `plantaria_mod`;
+  - `plantaria_admin`.
+- Se mantiene `plantaria_demo` como usuario con datos demo (password fuera de Git).
 - Android añade splash/logo animado inspirado en el SVG de Plantaria.
 - La pantalla de login ya no muestra el campo técnico de URL de API.
 - Android decide URL local automáticamente:
@@ -421,7 +527,7 @@
 - El dump de PostgreSQL queda desactivado por defecto y se puede incluir con `INCLUDE_DB_DUMP=1`.
 - Se añadió el script de backup a la comprobación de sintaxis de `scripts/validate_project.sh`.
 - Se creó un paquete real en OneDrive CEAC:
-  - `/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups/plantaria-backup-20260424-174446`
+  - `/ruta/a/PlantariaBackups/plantaria-backup-20260424-174446`
 - Contenido del paquete:
   - `plantaria-source-20260424-174446.tar.gz`;
   - `plantaria-git-20260424-174446.bundle`;

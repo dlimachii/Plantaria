@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends FormRequest
 {
+    use SanitizesInput;
+
     public function authorize(): bool
     {
         return true;
@@ -38,5 +41,17 @@ class UpdateProfileRequest extends FormRequest
             'default_lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'default_lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->sanitizedOnly([
+            'handle' => fn (mixed $value): ?string => $this->sanitizeHandle($value),
+            'display_name' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'photo_path' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'country' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'province' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'city' => fn (mixed $value): ?string => $this->sanitizeText($value),
+        ]));
     }
 }

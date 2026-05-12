@@ -30,16 +30,17 @@ Ese valor vive en `PLANTARIA_MAP_STYLE_URL` dentro de `app/build.gradle.kts`, de
 
 Para este TFC se mantiene ese estilo como base de desarrollo/demo documentada. Necesita conexion a internet y no debe presentarse como infraestructura final de produccion. Los registros de `GET /api/records` se pintan como marcadores sobre el mapa.
 
-## API local
+## API
 
-La app decide la URL local automaticamente:
+La variante `prod` compila por defecto contra la API de produccion del VPS real:
 
 ```text
-Emulador: http://10.0.2.2:8000/api/
-Movil fisico por USB: http://127.0.0.1:8000/api/
+https://api.dlimachii.com/api/
 ```
 
-En movil fisico se espera usar `adb reverse tcp:8000 tcp:8000`. En este entorno, ADB para el telefono fisico debe ejecutarse desde Windows PowerShell; `scripts/install_debug_apk.ps1` prepara el reverse e instala el APK.
+La pantalla de acceso sigue permitiendo cambiar el servidor manualmente cuando hace falta probar backend local o un tunel temporal.
+
+Si un movil tenia guardada una URL antigua de desarrollo (`127.0.0.1`, `10.0.2.2`, `localhost` o `0.0.0.0`), la app actual la descarta al arrancar y vuelve a la URL base configurada en la build.
 
 ### Script rapido
 
@@ -55,6 +56,17 @@ Ese script:
 - ejecuta migraciones + seed;
 - asegura `storage:link`;
 - deja Laravel sirviendo en `0.0.0.0:8000`.
+
+## API local
+
+Para probar contra Laravel local, hay que cambiar manualmente el servidor desde la pantalla de acceso y luego usar una de estas rutas:
+
+```text
+Emulador: http://10.0.2.2:8000/api/
+Movil fisico por USB: http://127.0.0.1:8000/api/
+```
+
+En movil fisico se espera usar `adb reverse tcp:8000 tcp:8000`. En este entorno, ADB para el telefono fisico debe ejecutarse desde Windows PowerShell; `scripts/install_debug_apk.ps1` prepara el reverse e instala el APK, pero la URL debe guardarse en la app si se quiere usar el backend local.
 
 ### Emulador Android
 
@@ -73,7 +85,7 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 ### Movil fisico por Wi-Fi
 
-El flujo recomendado de demo es USB con `adb reverse`, porque la pantalla de acceso ya no muestra el campo tecnico de URL. Si se quiere probar por Wi-Fi, hay que cambiar la URL por defecto de la build o recuperar temporalmente un ajuste de conexion.
+Si se quiere probar por Wi-Fi, hay que guardar la IP LAN o el tunel publico desde la pantalla de acceso.
 
 Como el backend se ejecuta dentro de WSL2, para un flujo Wi-Fi tambien puede hacer falta publicar el puerto desde Windows hacia WSL. Con PowerShell como administrador:
 
@@ -107,13 +119,27 @@ En otro terminal:
 
 ```bash
 cd android
-./gradlew :app:assembleDebug
+./gradlew :app:assembleProdDebug
 ```
 
 El APK queda en:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/prod/debug/app-prod-debug.apk
+```
+
+## Documentación técnica Android
+
+La rama `TFG` integra Dokka para generar documentación HTML a partir de KDoc:
+
+```bash
+../scripts/generate_technical_docs.sh
+```
+
+Salida:
+
+```text
+app/build/documentation/html/index.html
 ```
 
 ## Instalar en movil fisico
@@ -122,19 +148,19 @@ Primero compilar desde WSL:
 
 ```bash
 cd android
-./gradlew :app:assembleDebug
+./gradlew :app:assembleProdDebug
 ```
 
 Despues instalar desde Windows PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu\home\aviddrianimachie\CEAC\Proyecto\scripts\install_debug_apk.ps1"
+powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\TuDistro\home\TU_USUARIO\CEAC\Proyecto\scripts\install_debug_apk.ps1"
 ```
 
 Comandos manuales equivalentes en PowerShell:
 
 ```powershell
-$Apk = wsl wslpath -w /home/aviddrianimachie/CEAC/Proyecto/android/app/build/outputs/apk/debug/app-debug.apk
+$Apk = wsl wslpath -w /home/TU_USUARIO/CEAC/Proyecto/android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
 adb devices
 adb reverse tcp:8000 tcp:8000
 adb install -r $Apk
@@ -146,6 +172,12 @@ El script Bash queda como alternativa solo si ADB detecta el movil desde WSL:
 
 ```bash
 ./scripts/install_debug_apk.sh
+```
+
+Para compilar e instalar variantes en paralelo (útil para demos), usar `PLANTARIA_ANDROID_FLAVOR=demoA|demoB|demoC`:
+
+```bash
+PLANTARIA_ANDROID_FLAVOR=demoA ./scripts/install_debug_apk.sh
 ```
 
 ## Backend: imagenes
@@ -175,12 +207,14 @@ php artisan db:seed --class=DatabaseSeeder
 El seeder crea usuarios por rol:
 
 ```text
-USER  · plantaria_user  / PlantariaUser1
-MOD   · plantaria_mod   / PlantariaMod1
-ADMIN · plantaria_admin / PlantariaAdmin1
+USER  · plantaria_user
+MOD   · plantaria_mod
+ADMIN · plantaria_admin
 ```
 
-Tambien existe `plantaria_demo / PlantariaDemo1` como usuario con datos demo.
+Tambien existe `plantaria_demo` como usuario con datos demo.
+
+Las contraseñas de demo se configuran en `backend/.env` y no se publican en el repo.
 
 `plantaria_user`, `plantaria_mod` y `plantaria_admin` empiezan sin reportes demo propios. Su pestana `Usuario` debe mostrar actividad vacia hasta que esa cuenta cree reportes, observaciones, denuncias o acciones de moderacion/admin.
 

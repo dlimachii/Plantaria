@@ -47,7 +47,7 @@ Variables relevantes:
 - `DB_HOST=127.0.0.1`
 - `DB_DATABASE=plantaria`
 - `DB_USERNAME=plantaria`
-- `DB_PASSWORD=plantaria`
+- `DB_PASSWORD` (no se publica en el repo; configurarlo en `.env`)
 - `PLANTARIA_ADMIN_HANDLE`
 - `PLANTARIA_ADMIN_EMAIL`
 - `PLANTARIA_ADMIN_PASSWORD`
@@ -64,12 +64,21 @@ El seeder crea cuentas de prueba por rol, una cuenta demo con registros y datos 
 Cuentas de prueba:
 
 ```text
-USER  · plantaria_user  / PlantariaUser1
-MOD   · plantaria_mod   / PlantariaMod1
-ADMIN · plantaria_admin / PlantariaAdmin1
+USER  · plantaria_user
+MOD   · plantaria_mod
+ADMIN · plantaria_admin
 ```
 
-Cuenta demo con datos cargados: `plantaria_demo / PlantariaDemo1`.
+Cuenta demo con datos cargados: `plantaria_demo`.
+
+Las contraseñas de demo se configuran en `.env` y no se incluyen en Git:
+
+```text
+PLANTARIA_ADMIN_PASSWORD=...
+PLANTARIA_DEMO_PASSWORD=...
+PLANTARIA_USER_PASSWORD=...
+PLANTARIA_MOD_PASSWORD=...
+```
 
 ## API principal
 

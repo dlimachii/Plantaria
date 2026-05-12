@@ -88,7 +88,7 @@ class AuthController extends Controller
         auth()->user()?->currentAccessToken()?->delete();
 
         return response()->json([
-            'message' => 'Sesion cerrada.',
+            'message' => 'Sesión cerrada.',
         ]);
     }
 

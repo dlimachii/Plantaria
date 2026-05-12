@@ -26,12 +26,12 @@ Las rutas autenticadas exigen que la cuenta siga activa. Si un usuario queda blo
 El seeder de demo deja estas cuentas de prueba por rol:
 
 ```text
-USER  · plantaria_user  / PlantariaUser1
-MOD   · plantaria_mod   / PlantariaMod1
-ADMIN · plantaria_admin / PlantariaAdmin1
+USER  · plantaria_user
+MOD   · plantaria_mod
+ADMIN · plantaria_admin
 ```
 
-Tambien existe `plantaria_demo / PlantariaDemo1` como usuario con registros demo.
+Tambien existe `plantaria_demo` como usuario con registros demo.
 
 ### Registro
 
@@ -65,7 +65,7 @@ POST /api/auth/login
 ```json
 {
   "handle": "plantaria_demo",
-  "password": "PlantariaDemo1",
+  "password": "<CONFIGURADO_EN_BACKEND_ENV>",
   "device_name": "android"
 }
 ```

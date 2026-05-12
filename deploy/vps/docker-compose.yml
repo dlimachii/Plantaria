@@ -1,0 +1,69 @@
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    container_name: plantaria-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-plantaria}
+      POSTGRES_USER: ${DB_USERNAME:-plantaria}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-plantaria}
+    volumes:
+      - plantaria_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-plantaria} -d ${DB_DATABASE:-plantaria}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: plantaria-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://api.${DOMAIN_NAME}
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-plantaria}
+      DB_USERNAME: ${DB_USERNAME:-plantaria}
+      DB_PASSWORD: ${DB_PASSWORD:-plantaria}
+      SANCTUM_STATEFUL_DOMAINS: ""
+      SESSION_DRIVER: cookie
+      TRUSTED_PROXIES: "*"
+      MIGRATE_ON_BOOT: ${MIGRATE_ON_BOOT:-1}
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-1}
+      OLLAMA_ENABLED: "false"
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+    volumes:
+      - plantaria_storage:/var/www/html/storage
+
+  web:
+    image: caddy:2
+    container_name: plantaria-web
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  plantaria_db_data:
+  plantaria_storage:
+  caddy_data:
+  caddy_config:

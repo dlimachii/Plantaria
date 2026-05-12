@@ -35,7 +35,7 @@
             </div>
             <div class="grid">
                 <label>
-                    Pais
+                    País
                     <input name="country" value="{{ old('country', $managedUser->country) }}" required>
                 </label>
                 <label>

@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
 {
+    use SanitizesInput;
+
     public function authorize(): bool
     {
         return true;
@@ -24,5 +27,13 @@ class LoginRequest extends FormRequest
             'last_known_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'last_known_lng' => ['nullable', 'numeric', 'between:-180,180'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->sanitizedOnly([
+            'handle' => fn (mixed $value): ?string => $this->sanitizeHandle($value),
+            'device_name' => fn (mixed $value): ?string => $this->sanitizeText($value),
+        ]));
     }
 }

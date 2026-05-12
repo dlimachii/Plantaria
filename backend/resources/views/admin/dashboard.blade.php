@@ -37,7 +37,17 @@
         .signal-list { margin: 0; padding-left: 18px; color: #334133; }
         .code-line { display: inline-block; padding: 8px 10px; border-radius: 8px; background: #1f2a1f; color: #f5f7f1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86rem; }
         .inline-form { margin: 0; }
+        .footprint-grid { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr); gap: 16px; align-items: stretch; }
+        .footprint-main { display: grid; align-content: center; gap: 8px; padding: 18px; border-radius: 12px; background: #f7fbf4; border: 1px solid #dbe3d5; }
+        .footprint-main strong { font-size: 2.25rem; line-height: 1; color: var(--leaf); }
+        .resource-list { display: grid; gap: 12px; }
+        .resource-row { display: grid; gap: 6px; }
+        .resource-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+        .resource-top strong { color: #1f2a1f; }
+        .resource-track { height: 8px; overflow: hidden; border-radius: 999px; background: #e6ede2; }
+        .resource-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7ebd89 0%, #2f6f3e 100%); }
         @media (max-width: 920px) { .hero-panel, .analytics-grid { grid-template-columns: 1fr; display: grid; } }
+        @media (max-width: 860px) { .footprint-grid { grid-template-columns: 1fr; } }
         @media (max-width: 760px) { .bar-chart { gap: 6px; } .hour-chart { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     </style>
 
@@ -99,15 +109,99 @@
                 <div class="muted">Registros creados hoy</div>
             </div>
             <div class="mini-metric">
+                <div class="value">{{ $pendingRecordsToday }}</div>
+                <div class="muted">Pendientes creados hoy</div>
+            </div>
+            <div class="mini-metric">
                 <div class="value">{{ $observationsToday }}</div>
                 <div class="muted">Observaciones hoy</div>
             </div>
+            <div class="mini-metric">
+                <div class="value">{{ $averageReviewTime7d }}</div>
+                <div class="muted">Tiempo medio de revisión (7d) · n={{ $averageReviewSamples7d }}</div>
+            </div>
         </div>
+
+        @php
+            $co2Grams = $serverFootprint['estimated_co2_g'] ?? null;
+            $energyKwh = $serverFootprint['estimated_energy_kwh'] ?? null;
+            $cpuPercent = $serverFootprint['cpu_load_percent'] ?? null;
+            $memoryPercent = $serverFootprint['memory_percent'] ?? null;
+            $diskPercent = $serverFootprint['disk_percent'] ?? null;
+        @endphp
 
         <section class="card">
             <div class="section-head">
                 <div>
-                    <h2>Analitica Python + pandas</h2>
+                    <h2>Huella digital</h2>
+                    <div class="muted">Estimación local con carga, memoria y disco del servidor.</div>
+                </div>
+                <span class="badge">Actualizado {{ $serverFootprint['generated_at'] ?? 'n/a' }}</span>
+            </div>
+
+            @if (! ($serverFootprint['available'] ?? false))
+                <p class="muted">No hay métricas del servidor disponibles en este entorno.</p>
+            @else
+                <div class="footprint-grid">
+                    <div class="footprint-main">
+                        <span class="muted">CO2 gastado estimado desde arranque</span>
+                        <strong>{{ $co2Grams === null ? 'n/a' : number_format((float) $co2Grams, 1, ',', '.').' g' }}</strong>
+                        <span class="muted">
+                            {{ $energyKwh === null ? 'n/a' : number_format((float) $energyKwh, 3, ',', '.').' kWh' }}
+                            · {{ $serverFootprint['uptime_label'] ?? 'n/a' }}
+                            · {{ number_format((float) ($serverFootprint['carbon_intensity_g_per_kwh'] ?? 0), 0, ',', '.') }} gCO2/kWh
+                        </span>
+                    </div>
+
+                    <div class="resource-list">
+                        <div class="resource-row">
+                            <div class="resource-top">
+                                <strong>CPU</strong>
+                                <span class="muted">
+                                    {{ $cpuPercent === null ? 'n/a' : $cpuPercent.'%' }}
+                                    · load {{ $serverFootprint['load_1m'] ?? 'n/a' }}
+                                    · {{ $serverFootprint['cpu_cores'] ?? 1 }} cores
+                                </span>
+                            </div>
+                            <div class="resource-track">
+                                <div class="resource-fill" style="width: {{ min(100, max(0, (int) ($cpuPercent ?? 0))) }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="resource-row">
+                            <div class="resource-top">
+                                <strong>Memoria</strong>
+                                <span class="muted">
+                                    {{ $memoryPercent === null ? 'n/a' : $memoryPercent.'%' }}
+                                    · {{ $serverFootprint['memory_used_mb'] ?? 'n/a' }}/{{ $serverFootprint['memory_total_mb'] ?? 'n/a' }} MB
+                                </span>
+                            </div>
+                            <div class="resource-track">
+                                <div class="resource-fill" style="width: {{ min(100, max(0, (int) ($memoryPercent ?? 0))) }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="resource-row">
+                            <div class="resource-top">
+                                <strong>Disco</strong>
+                                <span class="muted">
+                                    {{ $diskPercent === null ? 'n/a' : $diskPercent.'%' }}
+                                    · {{ $serverFootprint['disk_used_gb'] ?? 'n/a' }}/{{ $serverFootprint['disk_total_gb'] ?? 'n/a' }} GB
+                                </span>
+                            </div>
+                            <div class="resource-track">
+                                <div class="resource-fill" style="width: {{ min(100, max(0, (int) ($diskPercent ?? 0))) }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </section>
+
+        <section class="card">
+                <div class="section-head">
+                    <div>
+                    <h2>Analítica Python + pandas</h2>
                     <div class="muted">Datos exportados desde Laravel y calculados fuera del backend transaccional.</div>
                 </div>
                 @if (auth()->user()->isAdmin())
@@ -132,7 +226,7 @@
                 <div class="pandas-grid" style="margin-bottom: 14px;">
                     <div class="pandas-kpi">
                         <strong>{{ $pandasKpis['events_7d'] ?? 0 }}</strong>
-                        <span class="muted">Eventos en 7 dias</span>
+                        <span class="muted">Eventos en 7 días</span>
                     </div>
                     <div class="pandas-kpi">
                         <strong>{{ $pandasKpis['reports_7d'] ?? 0 }}</strong>
@@ -154,9 +248,9 @@
 
                 <div class="split">
                     <div class="pandas-panel">
-                        <h3>Senales calculadas</h3>
+                        <h3>Señales calculadas</h3>
                         @if (empty($riskSignals))
-                            <p class="muted">Sin senales destacables en el snapshot actual.</p>
+                            <p class="muted">Sin señales destacables en el snapshot actual.</p>
                         @else
                             <ul class="signal-list">
                                 @foreach ($riskSignals as $signal)
@@ -179,7 +273,7 @@
 
                 @if (! empty($pandasTopSearches))
                     <div class="pandas-panel" style="margin-top: 14px;">
-                        <h3>Busquedas segun pandas</h3>
+                        <h3>Búsquedas según pandas</h3>
                         <table>
                             <thead><tr><th>Consulta</th><th>Tipo</th><th>Total</th></tr></thead>
                             <tbody>

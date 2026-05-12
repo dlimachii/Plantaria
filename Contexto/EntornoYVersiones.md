@@ -110,12 +110,14 @@ Estado actualizado: 2026-04-30 17:15 CEST.
 - La ruta backend de subida de fotos acepta hasta `20 MB` para la prueba móvil.
 - La app Android comprime/prepara la imagen antes de subirla para reducir fallos con fotos reales de cámara o galería.
 - La pantalla de login ya no muestra el campo técnico de URL de API.
-- Desde 2026-04-28 16:48 CEST, Android decide URL local por dispositivo:
-  - emulador: `http://10.0.2.2:8000/api/`;
-  - teléfono físico: `http://127.0.0.1:8000/api/`.
+- Estado actualizado: 2026-05-10 20:47 CEST.
+- La variante Android `prod` usa por defecto `https://api.dlimachii.com/api/`.
+- La pantalla de acceso permite cambiar manualmente el servidor cuando se quiere probar backend local o un túnel temporal.
+- Si el dispositivo conserva una URL local antigua (`127.0.0.1`, `10.0.2.2`, `localhost` o `0.0.0.0`) en `DataStore`, la app actual la descarta al arrancar y vuelve al servidor público por defecto.
 - La combinación operativa recomendada para móvil físico sigue siendo:
   - compilar APK desde WSL;
   - instalar y ejecutar `adb reverse tcp:8000 tcp:8000` desde Windows PowerShell;
+  - guardar `http://127.0.0.1:8000/api/` desde la pantalla de acceso si se quiere usar el backend local por USB;
   - usar `scripts/install_debug_apk.ps1` como flujo recomendado para el móvil físico.
 - `scripts/install_debug_apk.sh` queda como alternativa solo si ADB detecta el teléfono desde WSL.
 
@@ -201,12 +203,12 @@ Versiones usadas:
 
 Configuración de API local Android:
 
-- `BuildConfig.PLANTARIA_API_BASE_URL` apunta por defecto a `http://10.0.2.2:8000/api/`.
-- Esa URL está pensada para emulador Android; `10.0.2.2` apunta al host que ejecuta Laravel.
-- Para móvil físico, la pantalla de acceso permite editar y guardar la URL de API.
+- `BuildConfig.PLANTARIA_API_BASE_URL` apunta por defecto a `https://api.dlimachii.com/api/`.
+- Para emulador Android local, la pantalla de acceso permite editar y guardar `http://10.0.2.2:8000/api/`.
+- Para móvil físico por USB, la pantalla de acceso permite editar y guardar `http://127.0.0.1:8000/api/` usando `adb reverse`.
 - En móvil físico por Wi-Fi debe usarse la IP LAN del PC, por ejemplo `http://10.4.20.61:8000/api/` si esa IP sigue siendo válida.
 - Al ejecutar Laravel dentro de WSL2, puede hacer falta publicar el puerto desde Windows hacia la IP WSL con `netsh interface portproxy`.
-- Alternativa para móvil físico por USB: `adb reverse tcp:8000 tcp:8000` y URL `http://127.0.0.1:8000/api/` en la app.
+- El bootstrap remoto de servidor queda desactivado mientras no exista un `plantaria.json` real del proyecto.
 - El manifest permite cleartext traffic para desarrollo local con HTTP.
 - El manifest ya declara permisos de ubicación fina/aproximada y cámara; la app solicita ubicación y cámara en runtime desde la pantalla de acciones.
 - La captura directa de cámara usa `ActivityResultContracts.TakePicture` y `androidx.core.content.FileProvider` con cache interna de la app.
@@ -293,7 +295,7 @@ Estado actualizado: 2026-04-24 17:44 CEST.
 
 - Script: `scripts/package_for_onedrive.sh`.
 - Documentación: `docs/BACKUP_ONEDRIVE.md`.
-- Destino por defecto detectado: `/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups`.
+- Destino por defecto detectado: `/ruta/a/PlantariaBackups`.
 - Paquete real creado: `plantaria-backup-20260424-174446`.
 - Contiene fuente comprimida, bundle Git, APK debug, `MANIFEST.txt` y `SHA256SUMS`.
 - Validación de hashes ejecutada con `sha256sum -c SHA256SUMS`: correcta.

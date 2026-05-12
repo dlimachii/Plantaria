@@ -47,6 +47,8 @@ fun AuthScreen(
     isLoading: Boolean,
     message: String?,
     error: String?,
+    apiBaseUrl: String,
+    onApiBaseUrlChange: (String) -> Unit,
     onLogin: (handle: String, password: String) -> Unit,
     onRegister: (
         handle: String,
@@ -69,6 +71,7 @@ fun AuthScreen(
     var province by rememberSaveable { mutableStateOf("") }
     var city by rememberSaveable { mutableStateOf("") }
     var submitted by rememberSaveable { mutableStateOf(false) }
+    var apiBaseUrlDraft by rememberSaveable(apiBaseUrl) { mutableStateOf(apiBaseUrl) }
 
     val isRegister = mode == AuthMode.Register
     val handleErrorMessage = if (submitted) handleError(handle, isRegister) else null
@@ -226,6 +229,23 @@ fun AuthScreen(
                             singleLine = true,
                         )
                     }
+                }
+
+                OutlinedTextField(
+                    value = apiBaseUrlDraft,
+                    onValueChange = { apiBaseUrlDraft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Servidor (API)") },
+                    singleLine = true,
+                    supportingText = { Text("Ejemplo: https://xxxx.trycloudflare.com") },
+                )
+
+                Button(
+                    onClick = { onApiBaseUrlChange(apiBaseUrlDraft) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading,
+                ) {
+                    Text("Guardar servidor")
                 }
 
                 StatusText(message = message, error = error)

@@ -25,16 +25,17 @@ class AdminPanelTest extends TestCase
 
     public function test_admin_can_login_and_view_dashboard(): void
     {
+        $password = 'TestAdminPass1!';
         User::factory()->create([
             'handle' => 'plantaria_admin',
             'email' => 'admin@plantaria.local',
-            'password' => Hash::make('PlantariaAdmin1'),
+            'password' => Hash::make($password),
             'role' => UserRole::ADMIN,
         ]);
 
         $response = $this->post('/admin/login', [
             'login' => 'plantaria_admin',
-            'password' => 'PlantariaAdmin1',
+            'password' => $password,
         ]);
 
         $response->assertRedirect(route('admin.dashboard'));
@@ -44,6 +45,7 @@ class AdminPanelTest extends TestCase
             ->assertOk()
             ->assertSee('Resumen operativo')
             ->assertSee('Actividad diaria')
+            ->assertSee('Huella digital')
             ->assertSee('Top búsquedas');
     }
 
@@ -386,9 +388,9 @@ class AdminPanelTest extends TestCase
 
             $this->get('/admin')
                 ->assertOk()
-                ->assertSee('Analitica Python + pandas')
-                ->assertSee('Eventos en 7 dias')
-                ->assertSee('2 registros siguen pendientes de revision');
+                ->assertSee('Analítica Python + pandas')
+                ->assertSee('Eventos en 7 días')
+                ->assertSee('2 registros siguen pendientes de revisión');
         } finally {
             File::deleteDirectory(storage_path('app/analytics'));
         }
@@ -495,16 +497,104 @@ class AdminPanelTest extends TestCase
         $this->actingAs($admin);
 
         $this->post('/admin/assistant', [
-            'question' => 'Que usuarios han creado mas observaciones? Que plantas verificadas no tienen nombre cientifico?',
+            'question' => 'Qué usuarios han creado más observaciones? Qué plantas verificadas no tienen nombre científico?',
         ])
             ->assertOk()
             ->assertSee('Consulta directa a BBDD segura de Plantaria')
             ->assertSee('Botanica Alpha (@botanica_alpha): 2 observaciones; 2 de seguimiento.')
-            ->assertSee('Plantas verificadas sin nombre cientifico')
+            ->assertSee('Plantas verificadas sin nombre científico')
             ->assertSee($recordWithoutScientificName->public_id)
             ->assertDontSee($completeRecord->public_id)
             ->assertDontSee($pendingRecord->public_id)
             ->assertDontSee('No he reconocido una consulta directa segura');
+    }
+
+    public function test_admin_assistant_direct_queries_still_work_when_ollama_is_disabled(): void
+    {
+        File::deleteDirectory(storage_path('app/analytics'));
+
+        config([
+            'services.ollama.enabled' => false,
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => UserRole::ADMIN,
+        ]);
+        $author = User::factory()->create([
+            'handle' => 'sin_ollama_author',
+            'display_name' => 'Sin Ollama Author',
+        ]);
+        $recordWithoutScientificName = PlantRecord::create([
+            'created_by_user_id' => $author->id,
+            'provisional_common_name' => 'Menta sin IA',
+            'verified_common_name' => 'Menta',
+            'verified_scientific_name' => null,
+            'verification_status' => VerificationStatus::VERIFIED,
+            'verified_by_user_id' => $admin->id,
+            'verified_at' => now(),
+            'primary_photo_path' => 'uploads/menta-sin-ia.jpg',
+            'latitude' => 41.3874,
+            'longitude' => 2.1686,
+        ]);
+
+        $this->actingAs($admin);
+
+        $this->post('/admin/assistant', [
+            'question' => 'Que plantas verificadas no tienen nombre cientifico?',
+        ])
+            ->assertOk()
+            ->assertSee('Consulta directa a BBDD segura de Plantaria')
+            ->assertSee('Asistente IA deshabilitado para demo')
+            ->assertSee($recordWithoutScientificName->public_id)
+            ->assertDontSee('No he reconocido una consulta directa segura');
+    }
+
+    public function test_admin_can_run_read_only_sql_queries_from_assistant_panel(): void
+    {
+        config([
+            'services.admin_sql.enabled' => true,
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => UserRole::ADMIN,
+            'handle' => 'admin_sql_user',
+        ]);
+        User::factory()->create([
+            'handle' => 'observer_sql_user',
+        ]);
+
+        $this->actingAs($admin);
+
+        $this->post('/admin/assistant/sql', [
+            'sql_query' => 'SELECT handle FROM users ORDER BY handle ASC LIMIT 2',
+        ])
+            ->assertOk()
+            ->assertSee('Resultado SQL')
+            ->assertSee('admin_sql_user')
+            ->assertSee('observer_sql_user');
+    }
+
+    public function test_admin_sql_rejects_dangerous_statements(): void
+    {
+        config([
+            'services.admin_sql.enabled' => true,
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => UserRole::ADMIN,
+        ]);
+        $initialUserCount = User::count();
+
+        $this->actingAs($admin);
+
+        $this->post('/admin/assistant/sql', [
+            'sql_query' => 'SELECT handle FROM users; DELETE FROM users',
+        ])
+            ->assertOk()
+            ->assertSee('Error SQL')
+            ->assertSee('Solo se permite una única sentencia SQL de lectura.');
+
+        $this->assertSame($initialUserCount, User::count());
     }
 
     public function test_moderator_cannot_use_admin_assistant(): void
@@ -516,6 +606,9 @@ class AdminPanelTest extends TestCase
         $this->actingAs($moderator);
 
         $this->get('/admin/assistant')->assertForbidden();
+        $this->post('/admin/assistant/sql', [
+            'sql_query' => 'SELECT handle FROM users',
+        ])->assertForbidden();
     }
 
     public function test_analytics_command_exports_datasets_without_running_python(): void
@@ -568,7 +661,7 @@ class AdminPanelTest extends TestCase
                 'verification_rate' => 50.0,
             ],
             'risk_signals' => [
-                '2 registros siguen pendientes de revision.',
+                '2 registros siguen pendientes de revisión.',
             ],
             'top_searches' => [
                 ['search_query' => 'Lavanda', 'search_type' => 'text', 'total' => 4],

@@ -3,12 +3,15 @@
 namespace App\Http\Requests;
 
 use App\Enums\PlantCondition;
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreObservationRequest extends FormRequest
 {
+    use SanitizesInput;
+
     public function authorize(): bool
     {
         return true;
@@ -27,5 +30,13 @@ class StoreObservationRequest extends FormRequest
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'observed_at' => ['nullable', 'date'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->sanitizedOnly([
+            'photo_path' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'note' => fn (mixed $value): ?string => $this->sanitizeText($value, preserveNewLines: true),
+        ]));
     }
 }

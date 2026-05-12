@@ -2,6 +2,47 @@
 
 ## Decisiones cerradas
 
+### Asistente IA por entorno
+
+Estado: resuelta el 2026-05-10 21:20 CEST
+
+Decisión:
+
+- el repositorio puede incluir la integración del asistente admin con Ollama;
+- en entornos con pocos recursos, como el VPS de demo, el asistente IA puede quedar deshabilitado con `OLLAMA_ENABLED=false`;
+- aunque Ollama esté deshabilitado, el panel mantiene las consultas administrativas directas y seguras contra BBDD para preguntas reconocidas.
+
+Motivo:
+
+Así Git conserva la funcionalidad completa prevista del proyecto sin obligar a que todos los despliegues ejecuten el modelo local ni consuman recursos que no tienen.
+
+### Servidor por defecto en Android `prod`
+
+Estado: resuelta el 2026-05-10 20:47 CEST
+
+Decisión:
+
+- la variante Android `prod` debe apuntar por defecto a `https://api.dlimachii.com/api/`;
+- no usar bootstrap remoto de servidor mientras no exista un `plantaria.json` real y controlado por el proyecto;
+- si el dispositivo conserva una URL local antigua de desarrollo (`127.0.0.1`, `10.0.2.2`, `localhost` o `0.0.0.0`), la app debe descartarla automáticamente y volver al servidor público por defecto.
+
+Motivo:
+
+Una reinstalación sobre el mismo `applicationId` conserva `DataStore`, y eso podía dejar el APK nuevo apuntando a un backend local viejo aunque la build actual ya estuviera preparada para la API pública.
+
+### Demo con varias APKs en el mismo móvil
+
+Estado: resuelta el 2026-05-08 22:56 CEST
+
+Decisión:
+
+- usar product flavors Android (`prod`, `demoA`, `demoB`, `demoC`) con `applicationIdSuffix` para poder instalar varias apps Plantaria en paralelo y mantener sesiones separadas en la presentación;
+- parametrizar scripts (`PLANTARIA_ANDROID_FLAVOR`) para compilar/instalar la variante deseada.
+
+Motivo:
+
+Evita desloguear/reloguear durante la demo y permite preparar varios usuarios/roles en apps distintas.
+
 ### Limpieza de repositorio e indexación
 
 Estado: resuelta el 2026-05-04 20:29 CEST

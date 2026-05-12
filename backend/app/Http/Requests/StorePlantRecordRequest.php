@@ -3,12 +3,15 @@
 namespace App\Http\Requests;
 
 use App\Enums\PlantCondition;
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StorePlantRecordRequest extends FormRequest
 {
+    use SanitizesInput;
+
     public function authorize(): bool
     {
         return true;
@@ -27,5 +30,14 @@ class StorePlantRecordRequest extends FormRequest
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->sanitizedOnly([
+            'provisional_common_name' => fn (mixed $value): ?string => $this->sanitizeText($value),
+            'description' => fn (mixed $value): ?string => $this->sanitizeText($value, preserveNewLines: true),
+            'primary_photo_path' => fn (mixed $value): ?string => $this->sanitizeText($value),
+        ]));
     }
 }

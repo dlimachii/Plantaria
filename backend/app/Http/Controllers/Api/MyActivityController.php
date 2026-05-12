@@ -75,7 +75,7 @@ class MyActivityController extends Controller
                 return [
                     'id' => 'observation:' . $observation->uid,
                     'type' => EventType::OBSERVATION_CREATED->value,
-                    'label' => 'Observacion anadida',
+                    'label' => 'Observación añadida',
                     'description' => $record
                         ? ($record->verified_common_name ?? $record->provisional_common_name)
                         : 'Registro no disponible',

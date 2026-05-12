@@ -20,7 +20,7 @@ class PandasAnalyticsReport
             return [
                 'available' => false,
                 'path' => $path,
-                'message' => 'Todavia no se ha generado la analitica de pandas.',
+                'message' => 'Todavía no se ha generado la analítica de pandas.',
             ];
         }
 
@@ -30,7 +30,7 @@ class PandasAnalyticsReport
             return [
                 'available' => false,
                 'path' => $path,
-                'message' => 'El fichero de analitica existe, pero no contiene JSON valido.',
+                'message' => 'El fichero de analítica existe, pero no contiene JSON válido.',
             ];
         }
 
@@ -48,7 +48,7 @@ class PandasAnalyticsReport
         if (! ($report['available'] ?? false)) {
             return [
                 'available' => false,
-                'message' => $report['message'] ?? 'No hay analitica disponible.',
+                'message' => $report['message'] ?? 'No hay analítica disponible.',
             ];
         }
 

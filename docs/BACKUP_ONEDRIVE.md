@@ -6,13 +6,13 @@ El proyecto puede empaquetarse para OneDrive con:
 ./scripts/package_for_onedrive.sh
 ```
 
-Destino por defecto en este entorno:
+Destino por defecto:
 
 ```text
-/mnt/c/Users/DavidAdrianLimachiPe/OneDrive - INSTITUTO SUPERIOR DE FORMACION PROFESIONAL CEAC FP/PlantariaBackups
+backups/
 ```
 
-Si esa carpeta no existe, el script prueba el OneDrive personal y finalmente `backups/` dentro del repo.
+Puedes elegir una carpeta de OneDrive o cualquier otro destino con un argumento o con `PLANTARIA_BACKUP_DIR`.
 
 ## Que incluye
 
@@ -52,13 +52,13 @@ PLANTARIA_DB_HOST=127.0.0.1
 PLANTARIA_DB_PORT=5432
 PLANTARIA_DB_NAME=plantaria
 PLANTARIA_DB_USER=plantaria
-PLANTARIA_DB_PASSWORD=plantaria
+PLANTARIA_DB_PASSWORD=
 ```
 
 ## Elegir otra carpeta
 
 ```bash
-./scripts/package_for_onedrive.sh "/mnt/c/Users/DavidAdrianLimachiPe/OneDrive/PlantariaBackups"
+./scripts/package_for_onedrive.sh "/ruta/a/PlantariaBackups"
 ```
 
 O con variable:
