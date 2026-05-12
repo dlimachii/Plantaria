@@ -7,6 +7,5 @@
 *.jpeg binary
 *.webp binary
 
-DocumentoTFG/** linguist-documentation
-Contexto/** linguist-documentation
 docs/** linguist-documentation
+TFG/** linguist-documentation

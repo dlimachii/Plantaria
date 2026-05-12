@@ -24,6 +24,7 @@ En `backend/`:
 composer install
 cp .env.example .env
 php artisan key:generate
+# Rellenar antes en .env las variables PLANTARIA_*_PASSWORD.
 php artisan migrate --seed
 php artisan storage:link
 php artisan serve --host=0.0.0.0 --port=8000
@@ -47,7 +48,7 @@ Variables relevantes:
 - `DB_HOST=127.0.0.1`
 - `DB_DATABASE=plantaria`
 - `DB_USERNAME=plantaria`
-- `DB_PASSWORD` (no se publica en el repo; configurarlo en `.env`)
+- `DB_PASSWORD=plantaria` para el `compose.yaml` local; cambiarlo en produccion.
 - `PLANTARIA_ADMIN_HANDLE`
 - `PLANTARIA_ADMIN_EMAIL`
 - `PLANTARIA_ADMIN_PASSWORD`

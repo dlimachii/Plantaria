@@ -1,12 +1,12 @@
-# Despliegue en VPS (demo)
+# Despliegue en VPS
 
-Este documento permite desplegar el backend de Plantaria en un VPS usando Docker Compose.
+Referencia opcional para desplegar el backend de Plantaria en un VPS usando Docker Compose y Caddy.
 
 Requisitos:
 
 - VPS Ubuntu con puertos 80/443 abiertos.
 - Docker y docker compose instalados.
-- DNS: crear un registro `A` para `api.dlimachii.com` apuntando a la IP del VPS.
+- DNS: crear un registro `A` para el subdominio de API apuntando a la IP del VPS.
 
 Pasos:
 
@@ -20,7 +20,7 @@ Clonar el repo:
 ```bash
 sudo mkdir -p /var/www
 cd /var/www
-sudo git clone https://github.com/TU_USUARIO/Plantaria.git
+sudo git clone https://github.com/dlimachii/Plantaria.git
 cd Plantaria/deploy/vps
 ```
 
@@ -39,8 +39,8 @@ sudo docker compose up -d --build
 
 Comprobar:
 
-- Panel admin: `https://api.dlimachii.com/admin`
-- API: `https://api.dlimachii.com/api/records`
+- Panel admin: `https://api.<dominio>/admin`
+- API: `https://api.<dominio>/api/records`
 
 Notas:
 

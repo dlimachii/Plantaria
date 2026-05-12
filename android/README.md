@@ -128,20 +128,6 @@ El APK queda en:
 app/build/outputs/apk/prod/debug/app-prod-debug.apk
 ```
 
-## Documentación técnica Android
-
-La rama `TFG` integra Dokka para generar documentación HTML a partir de KDoc:
-
-```bash
-../scripts/generate_technical_docs.sh
-```
-
-Salida:
-
-```text
-app/build/documentation/html/index.html
-```
-
 ## Instalar en movil fisico
 
 Primero compilar desde WSL:
@@ -154,13 +140,13 @@ cd android
 Despues instalar desde Windows PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\TuDistro\home\TU_USUARIO\CEAC\Proyecto\scripts\install_debug_apk.ps1"
+powershell -ExecutionPolicy Bypass -File "\\wsl.localhost\<Distro>\ruta\al\repo\scripts\install_debug_apk.ps1"
 ```
 
 Comandos manuales equivalentes en PowerShell:
 
 ```powershell
-$Apk = wsl wslpath -w /home/TU_USUARIO/CEAC/Proyecto/android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
+$Apk = wsl wslpath -w /ruta/al/repo/android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
 adb devices
 adb reverse tcp:8000 tcp:8000
 adb install -r $Apk

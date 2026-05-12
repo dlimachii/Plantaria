@@ -1,5 +1,6 @@
 # Local agent/runtime files
 .codex
+.agents
 
 # OS/editor noise
 .DS_Store
@@ -32,6 +33,7 @@ analytics/venv/
 analytics/__pycache__/
 analytics/.pytest_cache/
 analytics/output/
+__pycache__/
 *.py[cod]
 
 # Laravel backend generated/local files
@@ -61,3 +63,7 @@ android/local.properties
 android/captures/
 android/build/
 android/app/build/
+
+# Local delivery copies not published in this repository
+TFG/Codigo/
+TFG/Dossier/

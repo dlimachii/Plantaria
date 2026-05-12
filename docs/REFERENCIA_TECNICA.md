@@ -1,6 +1,6 @@
 # Referencia técnica
 
-Esta guía resume la arquitectura real de la rama `TFG` y sirve como punto de entrada técnico
+Esta guia resume la arquitectura real de Plantaria y sirve como punto de entrada tecnico
 para entender el proyecto sin depender del contexto interno de desarrollo.
 
 ## Visión general
@@ -76,7 +76,7 @@ Flujo:
 
 ## Despliegue
 
-Opciones previstas en esta rama:
+Opciones previstas:
 
 - local: `compose.yaml` + `scripts/start_mobile_stack.sh`;
 - VPS: `deploy/vps/docker-compose.yml` con `backend/Dockerfile` y `deploy/vps/Caddyfile`.
@@ -87,18 +87,3 @@ Documentación específica:
 - `android/README.md`
 - `docs/API.md`
 - `docs/DEPLOY_VPS.md`
-- `docs/GUIA_DEMO.md`
-
-## Generación de documentación
-
-Android usa Dokka para generar documentación HTML a partir de KDoc:
-
-```bash
-./scripts/generate_technical_docs.sh
-```
-
-Salida esperada:
-
-```text
-android/app/build/documentation/html/index.html
-```

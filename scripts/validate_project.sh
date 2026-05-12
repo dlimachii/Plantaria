@@ -27,13 +27,9 @@ section "Comprobando sintaxis de scripts"
 bash -n "$ROOT_DIR/scripts/start_mobile_stack.sh"
 bash -n "$ROOT_DIR/scripts/install_debug_apk.sh"
 bash -n "$ROOT_DIR/scripts/validate_project.sh"
-bash -n "$ROOT_DIR/scripts/profile_app_performance.sh"
-bash -n "$ROOT_DIR/scripts/build_demo_apks.sh"
-bash -n "$ROOT_DIR/scripts/start_demo_tunnel.sh"
 
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -Command "\$ErrorActionPreference='Stop'; \$null = [System.Management.Automation.Language.Parser]::ParseFile('$ROOT_DIR/scripts/install_debug_apk.ps1', [ref]\$null, [ref]\$null)"
-  pwsh -NoProfile -Command "\$ErrorActionPreference='Stop'; \$null = [System.Management.Automation.Language.Parser]::ParseFile('$ROOT_DIR/scripts/install_demo_apks.ps1', [ref]\$null, [ref]\$null)"
 fi
 
 section "Ejecutando tests backend"
