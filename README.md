@@ -20,6 +20,7 @@ https://api.dlimachii.com/admin
 android/        Cliente Android Kotlin + Jetpack Compose + MapLibre
 backend/        API Laravel, Sanctum, panel admin, moderacion, analitica y tests
 analytics/      Scripts Python/pandas usados por el panel de analitica
+BBDD/           Exportacion SQL demo de la base de datos para revision en GitHub
 deploy/vps/     Despliegue opcional de referencia con Docker Compose y Caddy
 docs/           Referencia tecnica, API y despliegue
 scripts/        Instalacion, validacion y apoyo para probar el APK
@@ -170,8 +171,26 @@ CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1:8000,http://localhost:300
 
 El archivo `.env` no debe subirse a Git. Si se despliega en otro servidor, hay que cambiar `APP_URL`, credenciales de base de datos, claves y passwords de demo/admin.
 
+## Base de datos
+
+La base de datos real del proyecto es PostgreSQL/PostGIS. En local se levanta con
+`compose.yaml` y Docker guarda los datos en un volumen persistente, no en un unico
+archivo dentro del repositorio.
+
+Para que pueda revisarse directamente desde GitHub, el repositorio incluye una
+exportacion SQL demo en:
+
+```text
+BBDD/plantaria_demo.sql
+```
+
+Ese SQL contiene los datos demo por defecto del seeder: usuarios demo, registros de
+plantas y observaciones iniciales. El esquema real completo esta en
+`backend/database/migrations/`.
+
 ## Documentacion
 
+- `BBDD/README.md`: explicacion rapida de donde esta la BBDD y que contiene el SQL demo.
 - `docs/REFERENCIA_TECNICA.md`: arquitectura y puntos tecnicos principales.
 - `docs/API.md`: endpoints principales y ejemplos de payload.
 - `docs/DEPLOY_VPS.md`: despliegue opcional de referencia.

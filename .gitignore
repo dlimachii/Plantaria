@@ -64,6 +64,5 @@ android/captures/
 android/build/
 android/app/build/
 
-# Local delivery copies not published in this repository
-TFG/Codigo/
-TFG/Dossier/
+# Local defense/delivery copies not published in this repository
+TFG/
